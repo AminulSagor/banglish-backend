@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat & Voice Call Test</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 20px; color: #00d9ff; }
+    .grid { display: grid; grid-template-columns: 300px 1fr 300px; gap: 20px; }
+    .panel { background: #16213e; border-radius: 12px; padding: 20px; }
+    .panel h2 { margin-bottom: 15px; color: #00d9ff; font-size: 16px; border-bottom: 1px solid #0f3460; padding-bottom: 10px; }
+    input, button, select { width: 100%; padding: 10px 12px; border-radius: 8px; border: none; margin-bottom: 10px; font-size: 14px; }
+    input { background: #0f3460; color: #fff; }
+    input::placeholder { color: #888; }
+    button { background: #00d9ff; color: #000; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: #00b8d4; transform: translateY(-1px); }
+    button:disabled { background: #444; cursor: not-allowed; transform: none; }
+    button.danger { background: #ff4757; color: #fff; }
+    button.danger:hover { background: #ff3344; }
+    button.success { background: #2ed573; color: #000; }
+    .status { padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; }
+    .status.connected { background: #2ed57333; color: #2ed573; }
+    .status.disconnected { background: #ff475733; color: #ff4757; }
+    .messages { height: 400px; overflow-y: auto; background: #0f3460; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .message { padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; font-size: 13px; }
+    .message.sent { background: #00d9ff33; margin-left: 20%; }
+    .message.received { background: #0f3460; border: 1px solid #00d9ff33; margin-right: 20%; }
+    .message.system { background: #ffa50233; color: #ffa502; text-align: center; font-size: 12px; }
+    .message .meta { font-size: 11px; color: #888; margin-top: 4px; }
+    .users-list, .rooms-list { max-height: 200px; overflow-y: auto; background: #0f3460; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .user-item, .room-item { padding: 8px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .user-item:hover, .room-item:hover { background: #00d9ff22; }
+    .user-item.selected, .room-item.selected { background: #00d9ff33; border: 1px solid #00d9ff; }
+    .online-dot { width: 8px; height: 8px; background: #2ed573; border-radius: 50%; }
+    .call-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #16213e; padding: 30px; border-radius: 16px; text-align: center; z-index: 1000; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    .call-panel.active { display: block; }
+    .call-panel h3 { margin-bottom: 20px; }
+    .call-panel .buttons { display: flex; gap: 10px; justify-content: center; }
+    .call-panel button { width: auto; padding: 12px 24px; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; display: none; }
+    .overlay.active { display: block; }
+    .call-status { font-size: 14px; color: #888; margin: 10px 0; }
+    .call-timer { font-size: 24px; color: #00d9ff; margin: 10px 0; }
+    .logs { height: 150px; overflow-y: auto; background: #0a0a15; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 11px; }
+    .log-entry { margin-bottom: 4px; }
+    .log-entry.error { color: #ff4757; }
+    .log-entry.success { color: #2ed573; }
+    .log-entry.info { color: #00d9ff; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+    .tab { flex: 1; padding: 8px; background: #0f3460; border-radius: 6px; cursor: pointer; text-align: center; font-size: 13px; }
+    .tab.active { background: #00d9ff; color: #000; }
+    .hidden { display: none; }
+    .input-group { display: flex; gap: 8px; }
+    .input-group input { flex: 1; }
+    .input-group button { width: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chat & Voice Call Test</h1>
+     
+    <!-- Auth Panel -->
+    <div id="authPanel" class="panel" style="max-width: 400px; margin: 0 auto 20px;">
+      <h2>Authentication</h2>
+      <input type="email" id="email" placeholder="Email" value="test@example.com">
+      <input type="password" id="password" placeholder="Password" value="password123">
+      <button onclick="login()">Login</button>
+      <button onclick="register()" style="background: #0f3460; color: #fff;">Register</button>
+      <div id="authStatus" class="status disconnected">Not logged in</div>
+    </div>
+
+    <!-- Main Grid (hidden until logged in) -->
+    <div id="mainApp" class="grid hidden">
+      <!-- Left Panel - Users & Rooms -->
+      <div class="panel">
+        <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        
+        <h2>My Info</h2>
+        <div id="myInfo" style="margin-bottom: 15px; font-size: 13px;"></div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('users')">Users</div>
+          <div class="tab" onclick="switchTab('rooms')">Rooms</div>
+        </div>
+
+        <div id="usersTab">
+          <h2>Online Users</h2>
+          <div id="usersList" class="users-list"></div>
+          <button onclick="loadUsers()">Refresh Users</button>
+        </div>
+
+        <div id="roomsTab" class="hidden">
+          <h2>My Rooms</h2>
+          <div id="roomsList" class="rooms-list"></div>
+          <input type="text" id="newRoomName" placeholder="Room name">
+          <button onclick="createRoom()">Create Room</button>
+          
+          <h2 style="margin-top: 15px;">Public Rooms (Join)</h2>
+          <div id="publicRoomsList" class="rooms-list"></div>
+          <button onclick="loadPublicRooms()">Refresh Public Rooms</button>
+        </div>
+      </div>
+
+      <!-- Center Panel - Messages -->
+      <div class="panel">
+        <h2>Messages - <span id="chatTarget">Select a user or room</span></h2>
+        <div id="messages" class="messages"></div>
+        <div class="input-group">
+          <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+          <button onclick="sendMessage()" style="width: 100px;">Send</button>
+        </div>
+      </div>
+
+      <!-- Right Panel - Call & Logs -->
+      <div class="panel">
+        <h2>Voice Call</h2>
+        <div id="callControls">
+          <button id="callBtn" onclick="initiateCall()" disabled>Call Selected User</button>
+          <button id="groupCallBtn" onclick="initiateGroupCall()" disabled>Start Group Call</button>
+        </div>
+        <div id="activeCall" class="hidden" style="margin-top: 15px; padding: 15px; background: #0f3460; border-radius: 8px;">
+          <div class="call-status" id="callStatusText">In Call</div>
+          <div class="call-timer" id="callTimer">00:00</div>
+          <button class="danger" onclick="endCall()">End Call</button>
+        </div>
+
+        <h2 style="margin-top: 20px;">Event Logs</h2>
+        <div id="logs" class="logs"></div>
+        <button onclick="clearLogs()" style="background: #0f3460; color: #fff;">Clear Logs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incoming Call Modal -->
+  <div id="overlay" class="overlay"></div>
+  <div id="callModal" class="call-panel">
+    <h3 id="callModalTitle">Incoming Call</h3>
+    <p id="callerInfo">Someone is calling...</p>
+    <div class="buttons">
+      <button class="success" onclick="acceptCall()">Accept</button>
+      <button class="danger" onclick="rejectCall()">Reject</button>
+    </div>
+  </div>
+
+  <script>
+    // ============== State ==============
+    let socket = null;
+    let token = null;
+    let currentUserId = null;
+    let selectedUserId = null;
+    let selectedRoomId = null;
+    let currentCallId = null;
+    let incomingCallId = null;
+    let agoraClient = null;
+    let localAudioTrack = null;
+    let callStartTime = null;
+    let callTimerInterval = null;
+    let agoraAppId = null;
+
+    // Dynamically set API URL based on how the page is accessed
+    // Works for localhost, local network IP, and ngrok tunnels
+    const API_URL = window.location.origin;
+
+    // ============== Logging ==============
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type}] ${message}`);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    // ============== Auth ==============
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const response = await res.json();
+        console.log('Login response:', response);
+        
+        // Handle nested response: { success, data: { user, accessToken } }
+        const data = response.data || response;
+        const accessToken = data.accessToken || data.access_token;
+        
+        if (accessToken) {
+          token = accessToken;
+          currentUserId = data.user?.id;
+          document.getElementById('authStatus').className = 'status connected';
+          document.getElementById('authStatus').textContent = `Logged in as ${email}`;
+          document.getElementById('authPanel').classList.add('hidden');
+          document.getElementById('mainApp').classList.remove('hidden');
+          document.getElementById('myInfo').textContent = `User ID: ${currentUserId?.substring(0, 8)}...`;
+          log('Login successful', 'success');
+          await markOnline(); // Mark user as online for presence
+          connectSocket();
+          loadUsers();
+        } else {
+          log(`Login failed: ${response.message || data.message || JSON.stringify(response)}`, 'error');
+        }
+      } catch (err) {
+        log(`Login error: ${err.message}`, 'error');
+      }
+    }
+
+    async function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch(`${API_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const response = await res.json();
+        console.log('Register response:', response);
+        
+        // Handle nested response: { success, data: { user, accessToken } }
+        const data = response.data || response;
+        const accessToken = data.accessToken || data.access_token;
+        
+        if (accessToken) {
+          log('Registration successful! Now logging in...', 'success');
+          login();
+        } else {
+          log(`Registration failed: ${response.message || data.message || JSON.stringify(response)}`, 'error');
+        }
+      } catch (err) {
+        log(`Registration error: ${err.message}`, 'error');
+      }
+    }
+
+    // ============== Socket ==============
+    function connectSocket() {
+      socket = io(`${API_URL}/chat`, {
+        auth: { token },
+      });
+
+      socket.on('connect', () => {
+        document.getElementById('connectionStatus').className = 'status connected';
+        document.getElementById('connectionStatus').textContent = 'Connected';
+        log('Socket connected', 'success');
+        loadRooms();
+      });
+
+      socket.on('disconnect', () => {
+        document.getElementById('connectionStatus').className = 'status disconnected';
+        document.getElementById('connectionStatus').textContent = 'Disconnected';
+        log('Socket disconnected', 'error');
+      });
+
+      socket.on('error', (data) => {
+        log(`Socket error: ${data.message}`, 'error');
+      });
+
+      socket.on('chat:connected', (data) => {
+        log(`Chat connected: ${data.roomCount} rooms`, 'info');
+      });
+
+      // Chat events
+      socket.on('chat:newMessage', (message) => {
+        log(`New DM from ${message.senderId?.substring(0, 8)}`, 'info');
+        if (selectedUserId === message.senderId || message.senderId === currentUserId) {
+          addMessage(message, message.senderId === currentUserId);
+        }
+      });
+
+      socket.on('chat:newRoomMessage', (message) => {
+        log(`New room message in ${message.roomId?.substring(0, 8)}`, 'info');
+        if (selectedRoomId === message.roomId) {
+          addMessage(message, message.senderId === currentUserId);
+        }
+      });
+
+      socket.on('chat:roomCreated', (room) => {
+        log(`Room created: ${room.name}`, 'success');
+        loadRooms();
+      });
+
+      // Call events
+      socket.on('call:incoming', (data) => {
+        log(`Incoming call from ${data.callerId?.substring(0, 8)}`, 'info');
+        incomingCallId = data.callId;
+        const callerName = data.callerInfo?.profile?.fullName || data.callerInfo?.email || 'Unknown';
+        document.getElementById('callerInfo').textContent = `${callerName} is calling...`;
+        document.getElementById('callModalTitle').textContent = data.isGroupCall ? 'Incoming Group Call' : 'Incoming Call';
+        showCallModal(true);
+      });
+
+      socket.on('call:accepted', (data) => {
+        log('Call accepted!', 'success');
+      });
+
+      socket.on('call:rejected', (data) => {
+        log('Call rejected', 'info');
+        resetCallState();
+      });
+
+      socket.on('call:cancelled', (data) => {
+        log('Call cancelled by caller', 'info');
+        showCallModal(false);
+        incomingCallId = null;
+      });
+
+      socket.on('call:ended', (data) => {
+        log(`Call ended. Duration: ${data.duration}s`, 'info');
+        leaveAgoraChannel();
+        resetCallState();
+      });
+
+      socket.on('call:missed', (data) => {
+        log('Call missed (no answer)', 'info');
+        showCallModal(false);
+        resetCallState();
+      });
+
+      socket.on('call:userJoined', (data) => {
+        log(`User joined call: ${data.userId?.substring(0, 8)}`, 'info');
+      });
+
+      socket.on('call:userLeft', (data) => {
+        log(`User left call: ${data.userId?.substring(0, 8)}`, 'info');
+      });
+    }
+
+    // ============== Users ==============
+    // Mark current user as online for presence tracking
+    async function markOnline() {
+      try {
+        await fetch(`${API_URL}/presence/online`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        log('Marked as online', 'success');
+      } catch (err) {
+        log(`Failed to mark online: ${err.message}`, 'error');
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        // Use /presence/active to get online users (not admin-only)
+        const res = await fetch(`${API_URL}/presence/active`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const response = await res.json();
+        console.log('Users response:', response);
+        
+        // Handle nested response: { success, data: { users: [...] } }
+        const users = response.data?.users || response.data || [];
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
+        
+        users.forEach(user => {
+          if (user.id === currentUserId) return;
+          const div = document.createElement('div');
+          div.className = 'user-item' + (selectedUserId === user.id ? ' selected' : '');
+          div.innerHTML = `
+            <span>${user.profile?.fullName || user.email || user.id.substring(0, 8)}</span>
+            ${user.isOnline ? '<span class="online-dot"></span>' : ''}
+          `;
+          div.onclick = () => selectUser(user.id, user.profile?.fullName || user.email);
+          list.appendChild(div);
+        });
+        log(`Loaded ${users.length} users`, 'info');
+      } catch (err) {
+        log(`Failed to load users: ${err.message}`, 'error');
+      }
+    }
+
+    function selectUser(userId, name) {
+      selectedUserId = userId;
+      selectedRoomId = null;
+      document.getElementById('chatTarget').textContent = name || userId.substring(0, 8);
+      document.getElementById('messages').innerHTML = '';
+      document.getElementById('callBtn').disabled = false;
+      document.getElementById('groupCallBtn').disabled = true;
+      
+      // Update UI
+      document.querySelectorAll('.user-item').forEach(el => el.classList.remove('selected'));
+      event.target.closest('.user-item')?.classList.add('selected');
+      
+      // Load chat history
+      socket.emit('chat:getDirectHistory', { userId }, (response) => {
+        if (response.messages) {
+          response.messages.forEach(msg => {
+            addMessage(msg, msg.senderId === currentUserId);
+          });
+        }
+      });
+      log(`Selected user: ${userId.substring(0, 8)}`, 'info');
+    }
+
+    // ============== Rooms ==============
+    function loadRooms() {
+      socket.emit('chat:getMyRooms', {}, (response) => {
+        if (response.rooms) {
+          const list = document.getElementById('roomsList');
+          list.innerHTML = '';
+          
+          response.rooms.forEach(room => {
+            const div = document.createElement('div');
+            div.className = 'room-item' + (selectedRoomId === room.id ? ' selected' : '');
+            div.innerHTML = `<span>${room.name}</span><span style="color:#888">${room.memberCount} members</span>`;
+            div.onclick = () => selectRoom(room.id, room.name);
+            list.appendChild(div);
+          });
+          log(`Loaded ${response.rooms.length} rooms`, 'info');
+        }
+      });
+    }
+
+    function selectRoom(roomId, name) {
+      selectedRoomId = roomId;
+      selectedUserId = null;
+      document.getElementById('chatTarget').textContent = `Room: ${name}`;
+      document.getElementById('messages').innerHTML = '';
+      document.getElementById('callBtn').disabled = true;
+      document.getElementById('groupCallBtn').disabled = false;
+      
+      // Update UI
+      document.querySelectorAll('.room-item').forEach(el => el.classList.remove('selected'));
+      event.target.closest('.room-item')?.classList.add('selected');
+      
+      // Load room history
+      socket.emit('chat:getRoomHistory', { roomId }, (response) => {
+        if (response.messages) {
+          response.messages.forEach(msg => {
+            addMessage(msg, msg.senderId === currentUserId);
+          });
+        }
+      });
+      log(`Selected room: ${roomId.substring(0, 8)}`, 'info');
+    }
+
+    function createRoom() {
+      const name = document.getElementById('newRoomName').value.trim();
+      if (!name) {
+        log('Please enter a room name', 'error');
+        return;
+      }
+
+      socket.emit('chat:createRoom', { name, memberIds: [] }, (response) => {
+        if (response.success) {
+          log(`Room created: ${name}`, 'success');
+          document.getElementById('newRoomName').value = '';
+          loadRooms();
+          loadPublicRooms();
+        } else {
+          log(`Failed to create room: ${response.error}`, 'error');
+        }
+      });
+    }
+
+    // Load all public rooms that users can join
+    async function loadPublicRooms() {
+      try {
+        const res = await fetch(`${API_URL}/chat/rooms/public`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const response = await res.json();
+        console.log('Public rooms response:', response);
+        
+        const rooms = response.data?.rooms || response.rooms || [];
+        const list = document.getElementById('publicRoomsList');
+        list.innerHTML = '';
+        
+        if (rooms.length === 0) {
+          list.innerHTML = '<div style="color:#888; font-size:12px; padding:8px;">No public rooms yet. Create one!</div>';
+          return;
+        }
+        
+        rooms.forEach(room => {
+          const div = document.createElement('div');
+          div.className = 'room-item';
+          div.innerHTML = `
+            <span>${room.name} <span style="color:#888">(${room.memberCount} members)</span></span>
+            <button onclick="joinRoom('${room.id}', '${room.name}')" style="width:auto; padding:4px 8px; font-size:11px;">Join</button>
+          `;
+          list.appendChild(div);
+        });
+        log(`Found ${rooms.length} public rooms`, 'info');
+      } catch (err) {
+        log(`Failed to load public rooms: ${err.message}`, 'error');
+      }
+    }
+
+    // Join a public room
+    function joinRoom(roomId, roomName) {
+      socket.emit('chat:joinGroup', { roomId }, (response) => {
+        if (response.success) {
+          log(`Joined room: ${roomName}`, 'success');
+          loadRooms();
+          selectRoom(roomId, roomName);
+        } else if (response.error && response.error.includes('Already a member')) {
+          // Already a member - just select the room
+          log(`Already in room: ${roomName}, opening it...`, 'info');
+          loadRooms();
+          selectRoom(roomId, roomName);
+        } else {
+          log(`Failed to join room: ${response.error}`, 'error');
+        }
+      });
+    }
+
+    // ============== Messages ==============
+    function addMessage(message, isSent) {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = `message ${isSent ? 'sent' : 'received'}`;
+      div.innerHTML = `
+        <div>${message.content}</div>
+        <div class="meta">${isSent ? 'You' : (message.sender?.profile?.fullName || message.senderId?.substring(0, 8))} - ${new Date(message.createdAt).toLocaleTimeString()}</div>
+      `;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'message system';
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const content = input.value.trim();
+      if (!content) return;
+
+      if (selectedUserId) {
+        socket.emit('chat:sendDirect', { receiverId: selectedUserId, content }, (response) => {
+          if (response.error) {
+            log(`Send failed: ${response.error}`, 'error');
+          }
+        });
+      } else if (selectedRoomId) {
+        socket.emit('chat:sendToRoom', { roomId: selectedRoomId, content }, (response) => {
+          if (response.error) {
+            log(`Send failed: ${response.error}`, 'error');
+          }
+        });
+      } else {
+        log('Select a user or room first', 'error');
+        return;
+      }
+      input.value = '';
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    // ============== Tabs ==============
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      if (tab === 'users') {
+        document.getElementById('usersTab').classList.remove('hidden');
+        document.getElementById('roomsTab').classList.add('hidden');
+        loadUsers();
+      } else {
+        document.getElementById('usersTab').classList.add('hidden');
+        document.getElementById('roomsTab').classList.remove('hidden');
+        loadRooms();
+        loadPublicRooms();
+      }
+    }
+
+    // ============== Call Functions ==============
+    function showCallModal(show) {
+      document.getElementById('overlay').classList.toggle('active', show);
+      document.getElementById('callModal').classList.toggle('active', show);
+    }
+
+    function initiateCall() {
+      if (!selectedUserId) {
+        log('Select a user first', 'error');
+        return;
+      }
+
+      log(`Initiating call to ${selectedUserId.substring(0, 8)}...`, 'info');
+      
+      socket.emit('call:initiate', { receiverId: selectedUserId }, async (response) => {
+        if (response.success) {
+          currentCallId = response.callId;
+          agoraAppId = response.agoraAppId;
+          log(`Call initiated! CallID: ${response.callId.substring(0, 8)}`, 'success');
+          
+          // Show call UI
+          document.getElementById('activeCall').classList.remove('hidden');
+          document.getElementById('callStatusText').textContent = 'Ringing...';
+          
+          // Join Agora channel
+          await joinAgoraChannel(response.agoraAppId, response.channelName, response.agoraToken, response.uid);
+        } else {
+          log(`Call failed: ${response.error}`, 'error');
+        }
+      });
+    }
+
+    function initiateGroupCall() {
+      if (!selectedRoomId) {
+        log('Select a room first', 'error');
+        return;
+      }
+
+      log(`Initiating group call in room ${selectedRoomId.substring(0, 8)}...`, 'info');
+      
+      socket.emit('call:initiateGroup', { roomId: selectedRoomId }, async (response) => {
+        if (response.success) {
+          currentCallId = response.callId;
+          agoraAppId = response.agoraAppId;
+          log(`Group call initiated! CallID: ${response.callId.substring(0, 8)}`, 'success');
+          
+          // Show call UI
+          document.getElementById('activeCall').classList.remove('hidden');
+          document.getElementById('callStatusText').textContent = 'In Group Call';
+          startCallTimer();
+          
+          // Join Agora channel
+          await joinAgoraChannel(response.agoraAppId, response.channelName, response.agoraToken, response.uid);
+        } else {
+          log(`Group call failed: ${response.error}`, 'error');
+        }
+      });
+    }
+
+    function acceptCall() {
+      if (!incomingCallId) return;
+      
+      showCallModal(false);
+      log('Accepting call...', 'info');
+      
+      socket.emit('call:accept', { callId: incomingCallId }, async (response) => {
+        if (response.success) {
+          currentCallId = incomingCallId;
+          incomingCallId = null;
+          agoraAppId = response.agoraAppId;
+          log('Call accepted!', 'success');
+          
+          // Show call UI
+          document.getElementById('activeCall').classList.remove('hidden');
+          document.getElementById('callStatusText').textContent = 'Connected';
+          startCallTimer();
+          
+          // Join Agora channel
+          await joinAgoraChannel(response.agoraAppId, response.channelName, response.agoraToken, response.uid);
+        } else {
+          log(`Accept failed: ${response.error}`, 'error');
+        }
+      });
+    }
+
+    function rejectCall() {
+      if (!incomingCallId) return;
+      
+      showCallModal(false);
+      log('Rejecting call...', 'info');
+      
+      socket.emit('call:reject', { callId: incomingCallId }, (response) => {
+        if (response.success) {
+          log('Call rejected', 'info');
+        } else {
+          log(`Reject failed: ${response.error}`, 'error');
+        }
+        incomingCallId = null;
+      });
+    }
+
+    function endCall() {
+      if (!currentCallId) return;
+      
+      log('Ending call...', 'info');
+      
+      socket.emit('call:end', { callId: currentCallId }, (response) => {
+        if (response.success) {
+          log(`Call ended. Duration: ${response.duration}s`, 'info');
+        } else {
+          log(`End call failed: ${response.error}`, 'error');
+        }
+        leaveAgoraChannel();
+        resetCallState();
+      });
+    }
+
+    function resetCallState() {
+      currentCallId = null;
+      document.getElementById('activeCall').classList.add('hidden');
+      stopCallTimer();
+    }
+
+    function startCallTimer() {
+      callStartTime = Date.now();
+      callTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const secs = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('callTimer').textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function stopCallTimer() {
+      if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      document.getElementById('callTimer').textContent = '00:00';
+    }
+
+    // ============== Agora ==============
+    async function joinAgoraChannel(appId, channel, token, uid) {
+      try {
+        log('Initializing Agora...', 'info');
+        
+        agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        
+        // Event handlers
+        agoraClient.on('user-published', async (user, mediaType) => {
+          await agoraClient.subscribe(user, mediaType);
+          log(`Subscribed to user ${user.uid}`, 'info');
+          
+          if (mediaType === 'audio') {
+            user.audioTrack.play();
+            log('Playing remote audio', 'success');
+            document.getElementById('callStatusText').textContent = 'Connected';
+            if (!callTimerInterval) startCallTimer();
+          }
+        });
+
+        agoraClient.on('user-unpublished', (user) => {
+          log(`User ${user.uid} unpublished`, 'info');
+        });
+
+        agoraClient.on('user-left', (user) => {
+          log(`User ${user.uid} left channel`, 'info');
+        });
+
+        // Join channel
+        await agoraClient.join(appId, channel, token, uid);
+        log(`Joined Agora channel: ${channel.substring(0, 8)}`, 'success');
+
+        // Create and publish local audio track
+        localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await agoraClient.publish([localAudioTrack]);
+        log('Publishing local audio', 'success');
+
+      } catch (err) {
+        log(`Agora error: ${err.message}`, 'error');
+        console.error(err);
+      }
+    }
+
+    async function leaveAgoraChannel() {
+      try {
+        if (localAudioTrack) {
+          localAudioTrack.close();
+          localAudioTrack = null;
+        }
+        if (agoraClient) {
+          await agoraClient.leave();
+          log('Left Agora channel', 'info');
+        }
+      } catch (err) {
+        log(`Leave channel error: ${err.message}`, 'error');
+      }
+    }
+
+    // Initialize
+    log('Test client ready. Please login.', 'info');
+  </script>
+</body>
+</html>

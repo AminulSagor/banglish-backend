@@ -1,0 +1,487 @@
+{
+  "info": {
+    "name": "Banglish Chat API",
+    "description": "REST API endpoints for chat module - Direct Messages & Group Chats",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Direct Messages",
+      "description": "One-to-one private messaging endpoints",
+      "item": [
+        {
+          "name": "Get Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/conversations",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "conversations"]
+            },
+            "description": "Get list of all users you've chatted with, including last message and unread count for each conversation."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "[\n  {\n    \"partner\": {\n      \"id\": \"uuid\",\n      \"email\": \"user@example.com\",\n      \"profile\": {\n        \"fullName\": \"John Doe\",\n        \"profilePicture\": \"https://...\"\n      },\n      \"isOnline\": true,\n      \"lastSeen\": \"2024-01-01T00:00:00.000Z\"\n    },\n    \"lastMessage\": {\n      \"id\": \"uuid\",\n      \"content\": \"Hello!\",\n      \"type\": \"text\",\n      \"senderId\": \"uuid\",\n      \"createdAt\": \"2024-01-01T00:00:00.000Z\"\n    },\n    \"unreadCount\": 2\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get Direct Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/direct/:userId?page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "direct", ":userId"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Messages per page (default: 50, max: 100)"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "",
+                  "description": "UUID of the user to get chat history with"
+                }
+              ]
+            },
+            "description": "Get paginated message history with a specific user. Messages are ordered oldest to newest."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"messages\": [\n    {\n      \"id\": \"uuid\",\n      \"content\": \"Hello!\",\n      \"type\": \"text\",\n      \"senderId\": \"uuid\",\n      \"sender\": {\n        \"id\": \"uuid\",\n        \"email\": \"user@example.com\",\n        \"profile\": { \"fullName\": \"John Doe\" }\n      },\n      \"receiverId\": \"uuid\",\n      \"roomId\": null,\n      \"isRead\": true,\n      \"readAt\": \"2024-01-01T00:00:00.000Z\",\n      \"createdAt\": \"2024-01-01T00:00:00.000Z\"\n    }\n  ],\n  \"total\": 100,\n  \"page\": 1,\n  \"limit\": 50,\n  \"totalPages\": 2\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/unread-count",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "unread-count"]
+            },
+            "description": "Get total count of unread direct messages."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"count\": 5\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Messages as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/mark-read/:senderId",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "mark-read", ":senderId"],
+              "variable": [
+                {
+                  "key": "senderId",
+                  "value": "",
+                  "description": "UUID of the sender whose messages to mark as read"
+                }
+              ]
+            },
+            "description": "Mark all messages from a specific sender as read."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Group Chat Rooms",
+      "description": "Group chat room management endpoints",
+      "item": [
+        {
+          "name": "Get My Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms"]
+            },
+            "description": "Get all chat rooms the authenticated user is a member of."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"rooms\": [\n    {\n      \"id\": \"uuid\",\n      \"name\": \"Dev Team\",\n      \"description\": \"Development team chat\",\n      \"type\": \"group\",\n      \"avatarUrl\": null,\n      \"createdById\": \"uuid\",\n      \"createdBy\": { \"id\": \"uuid\", \"email\": \"admin@example.com\" },\n      \"members\": [...],\n      \"admins\": [...],\n      \"memberCount\": 5,\n      \"isActive\": true,\n      \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2024-01-01T00:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Group Chat\",\n  \"description\": \"Optional description\",\n  \"memberIds\": [\n    \"user-uuid-1\",\n    \"user-uuid-2\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/chat/rooms",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms"]
+            },
+            "description": "Create a new group chat room. Creator is automatically added as member and admin."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"room\": {\n    \"id\": \"uuid\",\n    \"name\": \"My Group Chat\",\n    \"description\": \"Optional description\",\n    \"type\": \"group\",\n    \"members\": [...],\n    \"admins\": [...],\n    \"memberCount\": 3\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Room Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Get details of a specific room. Must be a member."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"room\": {\n    \"id\": \"uuid\",\n    \"name\": \"Dev Team\",\n    \"members\": [...],\n    \"admins\": [...]\n  }\n}"
+            },
+            {
+              "name": "Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Not a member of this room\",\n  \"error\": \"Forbidden\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Room Name\",\n  \"description\": \"Updated description\",\n  \"avatarUrl\": \"https://example.com/avatar.png\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Update room details. Admin only. All fields are optional."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"room\": { ... }\n}"
+            },
+            {
+              "name": "Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Only admins can update the room\",\n  \"error\": \"Forbidden\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Soft-delete a room. Creator only."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true\n}"
+            },
+            {
+              "name": "Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Only the room creator can delete the room\",\n  \"error\": \"Forbidden\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Room Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId/messages?page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId", "messages"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Messages per page (default: 50, max: 100)"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Get paginated message history for a room. Must be a member."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"messages\": [\n    {\n      \"id\": \"uuid\",\n      \"content\": \"Hello team!\",\n      \"type\": \"text\",\n      \"senderId\": \"uuid\",\n      \"sender\": { ... },\n      \"receiverId\": null,\n      \"roomId\": \"uuid\",\n      \"createdAt\": \"2024-01-01T00:00:00.000Z\"\n    }\n  ],\n  \"total\": 100,\n  \"page\": 1,\n  \"limit\": 50,\n  \"totalPages\": 2\n}"
+            }
+          ]
+        },
+        {
+          "name": "Join Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId/join",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId", "join"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room to join"
+                }
+              ]
+            },
+            "description": "Join an existing room as a member."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"room\": { ... }\n}"
+            },
+            {
+              "name": "Already Member",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Already a member of this room\",\n  \"error\": \"Forbidden\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-uuid-to-add\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId/members",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId", "members"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Add a user to the room. Admin only (unless adding yourself)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"room\": { ... }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId/members/:userId",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId", "members", ":userId"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                },
+                {
+                  "key": "userId",
+                  "value": "",
+                  "description": "UUID of the user to remove"
+                }
+              ]
+            },
+            "description": "Remove a member from the room. Admin only (or self-removal)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Leave Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/chat/rooms/:roomId/leave",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "rooms", ":roomId", "leave"],
+              "variable": [
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "description": "UUID of the room"
+                }
+              ]
+            },
+            "description": "Leave a room you're a member of."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
