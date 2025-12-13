@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing & Payment Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+      color: #e2e8f0; 
+      min-height: 100vh; 
+      padding: 20px; 
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #00d9ff; margin-bottom: 10px; font-size: 28px; }
+    h2 { color: #94a3b8; font-size: 14px; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px; }
+    h3 { color: #e2e8f0; margin-bottom: 10px; }
+    .subtitle { color: #64748b; margin-bottom: 30px; }
+    
+    .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+    
+    .card { 
+      background: rgba(30, 41, 59, 0.8); 
+      border-radius: 16px; 
+      padding: 24px; 
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    input, button, select { 
+      width: 100%; 
+      padding: 12px 16px; 
+      border-radius: 10px; 
+      border: 1px solid #334155; 
+      background: #0f172a; 
+      color: #e2e8f0; 
+      margin-bottom: 12px; 
+      font-size: 14px; 
+      transition: all 0.2s;
+    }
+    input:focus, select:focus { 
+      outline: none; 
+      border-color: #3b82f6; 
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    
+    button { 
+      background: linear-gradient(135deg, #3b82f6, #2563eb); 
+      border: none; 
+      cursor: pointer; 
+      font-weight: 600; 
+      transition: all 0.3s; 
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
+    button:active { transform: translateY(0); }
+    button:disabled { background: #475569; cursor: not-allowed; transform: none; box-shadow: none; }
+    
+    .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .btn-secondary { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .btn-small { padding: 8px 16px; font-size: 13px; }
+    
+    .status { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      padding: 12px 16px; 
+      background: rgba(0,0,0,0.3); 
+      border-radius: 10px; 
+      margin-bottom: 15px; 
+    }
+    .status-dot { 
+      width: 12px; 
+      height: 12px; 
+      border-radius: 50%; 
+      background: #ef4444; 
+      animation: pulse 2s infinite;
+    }
+    .status-dot.connected { background: #22c55e; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .log { 
+      background: #0a0a0f; 
+      border-radius: 10px; 
+      padding: 16px; 
+      height: 400px; 
+      overflow-y: auto; 
+      font-family: 'Fira Code', monospace; 
+      font-size: 12px; 
+      border: 1px solid #1e293b;
+    }
+    .log-entry { 
+      padding: 6px 0; 
+      border-bottom: 1px solid rgba(255,255,255,0.05); 
+    }
+    .log-entry.success { color: #22c55e; }
+    .log-entry.error { color: #ef4444; }
+    .log-entry.info { color: #3b82f6; }
+    .log-entry.warning { color: #f59e0b; }
+    .log-time { color: #64748b; margin-right: 10px; }
+    
+    .package-card {
+      background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+      border: 2px solid transparent;
+      border-radius: 16px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .package-card:hover {
+      transform: translateY(-4px);
+      border-color: #3b82f6;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.2);
+    }
+    .package-card.selected {
+      border-color: #22c55e;
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.1));
+    }
+    .package-card.featured {
+      border-color: #f59e0b;
+    }
+    .package-card .badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .package-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .package-minutes { font-size: 36px; font-weight: 800; color: #3b82f6; }
+    .package-minutes span { font-size: 16px; color: #94a3b8; }
+    .package-price { font-size: 24px; font-weight: 700; color: #22c55e; margin: 16px 0; }
+    .package-price .currency { font-size: 14px; }
+    .package-price .original { 
+      text-decoration: line-through; 
+      color: #64748b; 
+      font-size: 14px; 
+      margin-left: 8px;
+    }
+    .package-desc { color: #94a3b8; font-size: 13px; }
+    .package-per-min { color: #64748b; font-size: 12px; margin-top: 8px; }
+    
+    .balance-card {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border-radius: 16px;
+      padding: 24px;
+      color: white;
+    }
+    .balance-card h3 { color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 8px; }
+    .balance-amount { font-size: 48px; font-weight: 800; }
+    .balance-details { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .balance-item { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; }
+    .balance-item label { font-size: 11px; opacity: 0.8; }
+    .balance-item value { font-size: 18px; font-weight: 600; display: block; }
+    
+    .transactions-list { max-height: 300px; overflow-y: auto; }
+    .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .transaction-item .type { font-weight: 600; }
+    .transaction-item .amount { color: #22c55e; font-weight: 600; }
+    .transaction-item .amount.negative { color: #ef4444; }
+    .transaction-item .status { 
+      padding: 4px 8px; 
+      border-radius: 6px; 
+      font-size: 11px; 
+      background: none;
+      margin: 0;
+    }
+    .transaction-item .status.completed { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .transaction-item .status.pending { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .transaction-item .status.failed { background: rgba(239,68,68,0.2); color: #ef4444; }
+    
+    .section { margin-top: 30px; }
+    .flex { display: flex; gap: 10px; }
+    .flex-1 { flex: 1; }
+    
+    pre { 
+      background: #0a0a0f; 
+      padding: 16px; 
+      border-radius: 10px; 
+      overflow-x: auto; 
+      font-size: 12px;
+      border: 1px solid #1e293b;
+    }
+    
+    .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab-buttons button { flex: 1; }
+    .tab-buttons button.active { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💳 Billing & Payment Test</h1>
+    <p class="subtitle">Test the complete billing infrastructure with SSLCommerz integration</p>
+    
+    <div class="grid">
+      <!-- Left Sidebar - Auth & Config -->
+      <div>
+        <!-- Auth Card -->
+        <div class="card">
+          <h2>🔐 Authentication</h2>
+          <div class="status">
+            <div class="status-dot" id="authStatus"></div>
+            <span id="authStatusText">Not authenticated</span>
+          </div>
+          
+          <input type="text" id="email" placeholder="Email" value="test@example.com">
+          <input type="password" id="password" placeholder="Password" value="Test@123456">
+          <button onclick="login()" class="btn-success">Login</button>
+          
+          <div style="text-align: center; margin: 10px 0; color: #64748b;">or</div>
+          
+          <input type="text" id="jwtToken" placeholder="Paste JWT Token directly">
+          <button onclick="useToken()">Use Token</button>
+        </div>
+        
+        <!-- Balance Card -->
+        <div class="card section" id="balanceSection" style="display:none;">
+          <h2>💰 My Balance</h2>
+          <div class="balance-card">
+            <h3>Total Available Minutes</h3>
+            <div class="balance-amount"><span id="totalMinutes">0</span> min</div>
+            <div class="balance-details">
+              <div class="balance-item">
+                <label>Free Minutes</label>
+                <value id="freeMinutes">0</value>
+              </div>
+              <div class="balance-item">
+                <label>Paid Minutes</label>
+                <value id="paidMinutes">0</value>
+              </div>
+            </div>
+          </div>
+          <button onclick="refreshBalance()" class="btn-secondary section">🔄 Refresh Balance</button>
+        </div>
+        
+        <!-- Config Card -->
+        <div class="card section">
+          <h2>⚙️ API Configuration</h2>
+          <label style="color: #94a3b8; font-size: 12px;">API Base URL</label>
+          <input type="text" id="apiUrl" value="http://localhost:3000">
+          <button onclick="testConnection()">Test Connection</button>
+        </div>
+      </div>
+      
+      <!-- Main Content -->
+      <div>
+        <!-- Tab Navigation -->
+        <div class="tab-buttons">
+          <button id="tabPackages" class="active" onclick="showTab('packages')">📦 Packages</button>
+          <button id="tabTransactions" onclick="showTab('transactions')">📜 Transactions</button>
+          <button id="tabAdmin" onclick="showTab('admin')">👑 Admin</button>
+          <button id="tabLogs" onclick="showTab('logs')">📋 Logs</button>
+        </div>
+        
+        <!-- Packages Tab -->
+        <div id="packagesTab" class="card">
+          <h2>📦 Available Packages</h2>
+          <button onclick="loadPackages()" class="btn-secondary" style="width: auto; margin-bottom: 20px;">🔄 Load Packages</button>
+          
+          <div id="packagesGrid" class="grid-3">
+            <div style="color: #64748b; text-align: center; padding: 40px;">
+              Click "Load Packages" to see available packages
+            </div>
+          </div>
+          
+          <div class="section" id="purchaseSection" style="display: none;">
+            <h3>Complete Purchase</h3>
+            <input type="text" id="customerName" placeholder="Your Name (optional)">
+            <input type="text" id="customerPhone" placeholder="Phone Number (optional)" value="01712345678">
+            <button onclick="buyPackage()" class="btn-success" id="buyButton" disabled>
+              🛒 Buy Selected Package
+            </button>
+          </div>
+        </div>
+        
+        <!-- Transactions Tab -->
+        <div id="transactionsTab" class="card hidden">
+          <h2>📜 Transaction History</h2>
+          <button onclick="loadTransactions()" class="btn-secondary" style="width: auto; margin-bottom: 20px;">🔄 Load Transactions</button>
+          
+          <div id="transactionsList" class="transactions-list">
+            <div style="color: #64748b; text-align: center; padding: 40px;">
+              Click "Load Transactions" to see your history
+            </div>
+          </div>
+        </div>
+        
+        <!-- Admin Tab -->
+        <div id="adminTab" class="card hidden">
+          <h2>👑 Admin Actions</h2>
+          <p style="color: #f59e0b; margin-bottom: 20px;">⚠️ Requires admin role</p>
+          
+          <div class="grid-3">
+            <div>
+              <h3>Seed Default Packages</h3>
+              <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">Create 4 default packages</p>
+              <button onclick="seedPackages()" class="btn-warning">🌱 Seed Packages</button>
+            </div>
+            
+            <div>
+              <h3>Get All Configs</h3>
+              <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">View billing configuration</p>
+              <button onclick="getConfigs()">📋 Get Configs</button>
+            </div>
+            
+            <div>
+              <h3>Billing Stats</h3>
+              <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">Revenue & usage stats</p>
+              <button onclick="getStats()" class="btn-secondary">📊 Get Stats</button>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3>Create Custom Package</h3>
+            <div class="flex">
+              <input type="text" id="pkgName" placeholder="Package Name" class="flex-1">
+              <input type="number" id="pkgMinutes" placeholder="Minutes" style="width: 100px;">
+              <input type="number" id="pkgPrice" placeholder="Price (BDT)" style="width: 120px;">
+            </div>
+            <button onclick="createPackage()" class="btn-success">➕ Create Package</button>
+          </div>
+          
+          <div class="section">
+            <h3>Admin Response</h3>
+            <pre id="adminResponse">Response will appear here...</pre>
+          </div>
+        </div>
+        
+        <!-- Logs Tab -->
+        <div id="logsTab" class="card hidden">
+          <h2>📋 API Logs</h2>
+          <button onclick="clearLogs()" class="btn-danger" style="width: auto; margin-bottom: 15px;">🗑️ Clear Logs</button>
+          <div class="log" id="logContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('billingTestToken') || '';
+    let selectedPackageId = null;
+    let packages = [];
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      if (token) {
+        document.getElementById('authStatus').classList.add('connected');
+        document.getElementById('authStatusText').textContent = 'Authenticated';
+        document.getElementById('balanceSection').style.display = 'block';
+        refreshBalance();
+      }
+    });
+    
+    function getApiUrl() {
+      return document.getElementById('apiUrl').value.replace(/\/$/, '');
+    }
+    
+    function log(message, type = 'info') {
+      const container = document.getElementById('logContainer');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+      container.insertBefore(entry, container.firstChild);
+    }
+    
+    function clearLogs() {
+      document.getElementById('logContainer').innerHTML = '';
+    }
+    
+    function showTab(tab) {
+      ['packages', 'transactions', 'admin', 'logs'].forEach(t => {
+        document.getElementById(`${t}Tab`).classList.add('hidden');
+        document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.remove('active');
+      });
+      document.getElementById(`${tab}Tab`).classList.remove('hidden');
+      document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+    }
+    
+    async function apiCall(endpoint, method = 'GET', body = null) {
+      const url = `${getApiUrl()}${endpoint}`;
+      log(`${method} ${endpoint}`, 'info');
+      
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+        
+        if (token) {
+          options.headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+        
+        const response = await fetch(url, options);
+        const data = await response.json();
+        
+        if (response.ok) {
+          log(`✅ Success: ${JSON.stringify(data).substring(0, 100)}...`, 'success');
+        } else {
+          log(`❌ Error: ${data.message || response.statusText}`, 'error');
+        }
+        
+        return { ok: response.ok, data, status: response.status };
+      } catch (error) {
+        log(`❌ Network error: ${error.message}`, 'error');
+        return { ok: false, error: error.message };
+      }
+    }
+    
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      const result = await apiCall('/auth/login', 'POST', { email, password });
+      
+      if (result.ok && result.data.data?.accessToken) {
+        token = result.data.data.accessToken;
+        localStorage.setItem('billingTestToken', token);
+        document.getElementById('authStatus').classList.add('connected');
+        document.getElementById('authStatusText').textContent = 'Authenticated';
+        document.getElementById('balanceSection').style.display = 'block';
+        log('🔐 Logged in successfully!', 'success');
+        refreshBalance();
+      }
+    }
+    
+    function useToken() {
+      const inputToken = document.getElementById('jwtToken').value;
+      if (inputToken) {
+        token = inputToken;
+        localStorage.setItem('billingTestToken', token);
+        document.getElementById('authStatus').classList.add('connected');
+        document.getElementById('authStatusText').textContent = 'Authenticated (manual token)';
+        document.getElementById('balanceSection').style.display = 'block';
+        log('🔐 Using manual token', 'success');
+        refreshBalance();
+      }
+    }
+    
+    async function testConnection() {
+      const result = await apiCall('/health');
+      if (result.ok) {
+        log('✅ API is reachable!', 'success');
+      }
+    }
+    
+    async function refreshBalance() {
+      const result = await apiCall('/billing/balance');
+      if (result.ok && result.data.data) {
+        const b = result.data.data;
+        document.getElementById('totalMinutes').textContent = b.totalRemainingMinutes;
+        document.getElementById('freeMinutes').textContent = `${b.remainingFreeMinutes}/${b.freeMinutes}`;
+        document.getElementById('paidMinutes').textContent = `${b.remainingPaidMinutes}/${b.paidMinutes}`;
+      }
+    }
+    
+    async function loadPackages() {
+      const result = await apiCall('/billing/packages');
+      if (result.ok && result.data.data?.packages) {
+        packages = result.data.data.packages;
+        renderPackages();
+        document.getElementById('purchaseSection').style.display = 'block';
+      }
+    }
+    
+    function renderPackages() {
+      const grid = document.getElementById('packagesGrid');
+      grid.innerHTML = packages.map(pkg => `
+        <div class="package-card ${pkg.isFeatured ? 'featured' : ''} ${selectedPackageId === pkg.id ? 'selected' : ''}" 
+             onclick="selectPackage('${pkg.id}')">
+          ${pkg.badge ? `<div class="badge">${pkg.badge}</div>` : ''}
+          <div class="package-name">${pkg.name}</div>
+          <div class="package-minutes">${pkg.minutes} <span>minutes</span></div>
+          <div class="package-price">
+            <span class="currency">৳</span>${pkg.price}
+            ${pkg.originalPrice ? `<span class="original">৳${pkg.originalPrice}</span>` : ''}
+          </div>
+          <div class="package-desc">${pkg.description || ''}</div>
+          <div class="package-per-min">৳${pkg.pricePerMinute?.toFixed(2) || (pkg.price/pkg.minutes).toFixed(2)}/min</div>
+        </div>
+      `).join('');
+    }
+    
+    function selectPackage(id) {
+      selectedPackageId = id;
+      renderPackages();
+      document.getElementById('buyButton').disabled = false;
+      const pkg = packages.find(p => p.id === id);
+      log(`Selected: ${pkg.name} (${pkg.minutes} min for ৳${pkg.price})`, 'info');
+    }
+    
+    async function buyPackage() {
+      if (!selectedPackageId) return;
+      
+      const pkg = packages.find(p => p.id === selectedPackageId);
+      log(`🛒 Initiating purchase: ${pkg.name}`, 'warning');
+      
+      const result = await apiCall(`/billing/packages/${selectedPackageId}/buy`, 'POST', {
+        packageId: selectedPackageId,
+        customerName: document.getElementById('customerName').value || undefined,
+        customerPhone: document.getElementById('customerPhone').value || undefined
+      });
+      
+      if (result.ok && result.data.data?.gatewayUrl) {
+        log(`🔗 Gateway URL received! Redirecting to payment...`, 'success');
+        log(`URL: ${result.data.data.gatewayUrl}`, 'info');
+        
+        // Open payment in new window
+        window.open(result.data.data.gatewayUrl, '_blank');
+      } else if (result.data?.message) {
+        log(`⚠️ ${result.data.message}`, 'warning');
+      }
+    }
+    
+    async function loadTransactions() {
+      const result = await apiCall('/billing/transactions');
+      if (result.ok && result.data.data?.transactions) {
+        renderTransactions(result.data.data.transactions);
+      }
+    }
+    
+    function renderTransactions(transactions) {
+      const list = document.getElementById('transactionsList');
+      if (transactions.length === 0) {
+        list.innerHTML = '<div style="color: #64748b; text-align: center; padding: 40px;">No transactions yet</div>';
+        return;
+      }
+      
+      list.innerHTML = transactions.map(t => `
+        <div class="transaction-item">
+          <div>
+            <div class="type">${t.type}</div>
+            <div style="color: #64748b; font-size: 12px;">${new Date(t.createdAt).toLocaleString()}</div>
+            <div style="color: #94a3b8; font-size: 12px;">${t.description || ''}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="amount ${t.type === 'USAGE' ? 'negative' : ''}">${t.type === 'USAGE' ? '-' : '+'}${t.minutes} min</div>
+            ${t.amount > 0 ? `<div style="color: #64748b; font-size: 12px;">৳${t.amount}</div>` : ''}
+            <div class="status ${t.status.toLowerCase()}">${t.status}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    async function seedPackages() {
+      const result = await apiCall('/billing/admin/packages/seed', 'POST');
+      document.getElementById('adminResponse').textContent = JSON.stringify(result.data, null, 2);
+      if (result.ok) {
+        loadPackages();
+      }
+    }
+    
+    async function getConfigs() {
+      const result = await apiCall('/billing/admin/config');
+      document.getElementById('adminResponse').textContent = JSON.stringify(result.data, null, 2);
+    }
+    
+    async function getStats() {
+      const result = await apiCall('/billing/admin/stats');
+      document.getElementById('adminResponse').textContent = JSON.stringify(result.data, null, 2);
+    }
+    
+    async function createPackage() {
+      const name = document.getElementById('pkgName').value;
+      const minutes = parseInt(document.getElementById('pkgMinutes').value);
+      const price = parseFloat(document.getElementById('pkgPrice').value);
+      
+      if (!name || !minutes || !price) {
+        log('Please fill all package fields', 'error');
+        return;
+      }
+      
+      const result = await apiCall('/billing/admin/packages', 'POST', {
+        name, minutes, price, currency: 'BDT', isActive: true
+      });
+      document.getElementById('adminResponse').textContent = JSON.stringify(result.data, null, 2);
+      if (result.ok) {
+        loadPackages();
+      }
+    }
+  </script>
+</body>
+</html>

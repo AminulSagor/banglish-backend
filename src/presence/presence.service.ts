@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { User } from '../users/entities/user.entity';
-import { ActiveUsersQueryDto, ActiveUsersResponseDto, ActiveUserDto } from './dto/active-users-query.dto';
+import {
+  ActiveUsersQueryDto,
+  ActiveUsersResponseDto,
+  ActiveUserDto,
+} from './dto/active-users-query.dto';
 import { PRESENCE_TIMEOUT_MINUTES } from './presence.constants';
 
 @Injectable()
@@ -71,42 +75,11 @@ export class PresenceService {
 
     const affected = result.affected || 0;
     if (affected > 0) {
-      this.logger.log(`Marked ${affected} stale users as offline (no heartbeat for ${PRESENCE_TIMEOUT_MINUTES} min)`);
+      this.logger.log(
+        `Marked ${affected} stale users as offline (no heartbeat for ${PRESENCE_TIMEOUT_MINUTES} min)`,
+      );
     }
     return affected;
-  }
-
-  // ==================== SOCKET-BASED PRESENCE (Legacy) ====================
-
-  /**
-   * Mark user as online and store socket ID (for socket-based presence)
-   */
-  async setUserOnline(userId: string, socketId: string): Promise<void> {
-    await this.userRepository.update(userId, {
-      isOnline: true,
-      socketId,
-      lastSeen: new Date(),
-    });
-  }
-
-  /**
-   * Mark user as offline and clear socket ID (for socket-based presence)
-   */
-  async setUserOffline(userId: string): Promise<void> {
-    await this.userRepository.update(userId, {
-      isOnline: false,
-      socketId: null,
-      lastSeen: new Date(),
-    });
-  }
-
-  /**
-   * Get user by socket ID (for disconnect handling)
-   */
-  async getUserBySocketId(socketId: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { socketId },
-    });
   }
 
   /**
@@ -124,7 +97,9 @@ export class PresenceService {
    * Get all active (online) users with pagination
    * Returns: id, isOnline, lastSeen, profile (fullName, profilePicture, country, interestedLanguages)
    */
-  async getActiveUsers(query: ActiveUsersQueryDto): Promise<ActiveUsersResponseDto> {
+  async getActiveUsers(
+    query: ActiveUsersQueryDto,
+  ): Promise<ActiveUsersResponseDto> {
     const { page = 1, limit = 50 } = query;
     const skip = (page - 1) * limit;
 
@@ -148,12 +123,13 @@ export class PresenceService {
             fullName: user.profile.fullName,
             profilePicture: user.profile.profilePicture,
             country: user.profile.country,
-            interestedLanguages: user.profile.interestedLanguages?.map((lang) => ({
-              id: lang.id,
-              name: lang.name,
-              code: lang.code,
-              nativeName: lang.nativeName,
-            })) || [],
+            interestedLanguages:
+              user.profile.interestedLanguages?.map((lang) => ({
+                id: lang.id,
+                name: lang.name,
+                code: lang.code,
+                nativeName: lang.nativeName,
+              })) || [],
           }
         : null,
     }));
@@ -180,9 +156,6 @@ export class PresenceService {
    * Mark all users as offline (useful for server restart)
    */
   async setAllUsersOffline(): Promise<void> {
-    await this.userRepository.update(
-      { isOnline: true },
-      { isOnline: false, socketId: null },
-    );
+    await this.userRepository.update({ isOnline: true }, { isOnline: false });
   }
 }

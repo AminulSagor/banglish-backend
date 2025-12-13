@@ -1,0 +1,942 @@
+{
+  "info": {
+    "name": "Banglish API",
+    "description": "Complete API collection for Banglish Backend - Chat, Calls, and Presence",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "roomId",
+      "value": ""
+    },
+    {
+      "key": "packageId",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/ping",
+            "description": "Simple health check - returns uptime"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Database health check for load balancers"
+          }
+        },
+        {
+          "name": "Detailed Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/detailed",
+            "description": "Detailed health check including memory"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                  "    pm.collectionVariables.set('userId', jsonData.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"profile\": {\n    \"fullName\": \"Test User\",\n    \"country\": \"Bangladesh\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                  "    pm.collectionVariables.set('userId', jsonData.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/refresh"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/profile"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"password\": \"NewPassword123!\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/reset-password"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (Admin)",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}/activate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/profile/me"
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Updated Name\",\n  \"bio\": \"My new bio\",\n  \"ownLanguage\": \"Bengali\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/me"
+          }
+        },
+        {
+          "name": "Update Profile Picture",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profilePicture\": \"https://example.com/avatar.jpg\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/me/picture"
+          }
+        },
+        {
+          "name": "Get All Languages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/profile/languages"
+          }
+        },
+        {
+          "name": "Get Language Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/profile/languages/stats"
+          }
+        },
+        {
+          "name": "Find Users by Language",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profile/users/by-language?language=Bengali",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "users", "by-language"],
+              "query": [
+                { "key": "language", "value": "Bengali" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat - Direct Messages",
+      "item": [
+        {
+          "name": "Get Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/conversations"
+          }
+        },
+        {
+          "name": "Get Direct Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chat/direct/{{userId}}?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "direct", "{{userId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/unread-count"
+          }
+        },
+        {
+          "name": "Mark Messages as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/mark-read/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat - Rooms",
+      "item": [
+        {
+          "name": "Get My Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms"
+          }
+        },
+        {
+          "name": "Get Public Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/public"
+          }
+        },
+        {
+          "name": "Create Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.room) {",
+                  "    pm.collectionVariables.set('roomId', jsonData.data.room.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My New Room\",\n  \"description\": \"A room for testing\",\n  \"memberIds\": []\n}"
+            },
+            "url": "{{baseUrl}}/chat/rooms"
+          }
+        },
+        {
+          "name": "Get Room Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}"
+          }
+        },
+        {
+          "name": "Get Room Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chat/rooms/{{roomId}}/messages?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "rooms", "{{roomId}}", "messages"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Join Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/join"
+          }
+        },
+        {
+          "name": "Leave Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/leave"
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Room Name\",\n  \"description\": \"Updated description\"\n}"
+            },
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}"
+          }
+        },
+        {
+          "name": "Deactivate Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/deactivate"
+          }
+        },
+        {
+          "name": "Reactivate Room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/reactivate"
+          }
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat - Room Members",
+      "item": [
+        {
+          "name": "Add Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-uuid-here\"\n}"
+            },
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/members"
+          }
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/members/{{userId}}"
+          }
+        },
+        {
+          "name": "Get Room Admins",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/admins"
+          }
+        },
+        {
+          "name": "Make Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/admins/{{userId}}"
+          }
+        },
+        {
+          "name": "Remove Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/chat/rooms/{{roomId}}/admins/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Call",
+      "item": [
+        {
+          "name": "Get Call History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/call/history?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["call", "history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Agora Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/call/config"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Presence",
+      "item": [
+        {
+          "name": "Set Online",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/presence/online"
+          }
+        },
+        {
+          "name": "Set Offline",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/presence/offline"
+          }
+        },
+        {
+          "name": "Send Heartbeat",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/presence/heartbeat"
+          }
+        },
+        {
+          "name": "Get Presence Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/presence/config"
+          }
+        },
+        {
+          "name": "Get Active Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/presence/active?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["presence", "active"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Online Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/presence/count"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing",
+      "item": [
+        {
+          "name": "Get My Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/balance",
+            "description": "Get current user's call minutes balance"
+          }
+        },
+        {
+          "name": "Get Pricing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/pricing",
+            "description": "Get current pricing for call minutes"
+          }
+        },
+        {
+          "name": "Get My Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/transactions?limit=20&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing", "transactions"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Get transaction history"
+          }
+        },
+        {
+          "name": "Purchase Minutes",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minutes\": 60,\n  \"paymentMethod\": \"STRIPE\"\n}"
+            },
+            "url": "{{baseUrl}}/billing/purchase",
+            "description": "Initiate purchase of call minutes"
+          }
+        },
+        {
+          "name": "Check Minutes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/check-minutes?minutes=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing", "check-minutes"],
+              "query": [
+                { "key": "minutes", "value": "5" }
+              ]
+            },
+            "description": "Check if user has enough minutes"
+          }
+        },
+        {
+          "name": "Get Available Packages",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/packages",
+            "description": "Get all active minute packages available for purchase (Public)"
+          }
+        },
+        {
+          "name": "Get Package by ID",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/packages/{{packageId}}",
+            "description": "Get details of a specific package (Public)"
+          }
+        },
+        {
+          "name": "Buy Package (SSLCommerz)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.transactionId) {",
+                  "    pm.collectionVariables.set('transactionId', jsonData.data.transactionId);",
+                  "}",
+                  "if (jsonData.data && jsonData.data.gatewayUrl) {",
+                  "    console.log('Gateway URL:', jsonData.data.gatewayUrl);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Test User\",\n  \"customerPhone\": \"01712345678\"\n}"
+            },
+            "url": "{{baseUrl}}/billing/packages/{{packageId}}/buy",
+            "description": "Initiate package purchase via SSLCommerz. Returns gatewayUrl to redirect user to payment page."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing (Admin)",
+      "item": [
+        {
+          "name": "Get All Configs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/config",
+            "description": "Get all billing configurations (Admin only)"
+          }
+        },
+        {
+          "name": "Set Free Minutes",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freeMinutes\": 30\n}"
+            },
+            "url": "{{baseUrl}}/billing/admin/config/free-minutes",
+            "description": "Set free minutes for new users (Admin only)"
+          }
+        },
+        {
+          "name": "Set Config Value",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"2.50\",\n  \"description\": \"Price per minute in BDT\"\n}"
+            },
+            "url": "{{baseUrl}}/billing/admin/config/price_per_minute",
+            "description": "Set any billing config value (Admin only)"
+          }
+        },
+        {
+          "name": "Get User Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/users/{{userId}}/balance",
+            "description": "Get specific user's balance (Admin only)"
+          }
+        },
+        {
+          "name": "Set User Balance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"freeMinutes\": 60,\n  \"paidMinutes\": 0,\n  \"reason\": \"Promotional bonus\"\n}"
+            },
+            "url": "{{baseUrl}}/billing/admin/users/{{userId}}/balance",
+            "description": "Adjust user's free/paid minutes (Admin only)"
+          }
+        },
+        {
+          "name": "Get All Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/admin/transactions?limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing", "admin", "transactions"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Get all transactions (Admin only)"
+          }
+        },
+        {
+          "name": "Get Billing Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/stats",
+            "description": "Get billing analytics (Admin only)"
+          }
+        },
+        {
+          "name": "Seed Default Packages",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/packages/seed",
+            "description": "Create default minute packages (Admin only)"
+          }
+        },
+        {
+          "name": "Get All Packages (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/packages",
+            "description": "Get all packages including inactive ones (Admin only)"
+          }
+        },
+        {
+          "name": "Create Package",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('packageId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Custom Package\",\n  \"description\": \"A custom minute package\",\n  \"minutes\": 50,\n  \"price\": 80,\n  \"currency\": \"BDT\",\n  \"discountPercent\": 0,\n  \"isActive\": true,\n  \"isFeatured\": false\n}"
+            },
+            "url": "{{baseUrl}}/billing/admin/packages",
+            "description": "Create a new minute package (Admin only)"
+          }
+        },
+        {
+          "name": "Update Package",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Package Name\",\n  \"price\": 100,\n  \"isFeatured\": true\n}"
+            },
+            "url": "{{baseUrl}}/billing/admin/packages/{{packageId}}",
+            "description": "Update an existing package (Admin only)"
+          }
+        },
+        {
+          "name": "Delete Package",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/billing/admin/packages/{{packageId}}",
+            "description": "Delete a package (Admin only)"
+          }
+        }
+      ]
+    }
+  ]
+}

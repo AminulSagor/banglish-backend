@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, MinLength, IsPhoneNumber, ValidateIf, ValidateNested } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  MinLength,
+  IsPhoneNumber,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateProfileDto } from '../../profile/dto/create-profile.dto';
 

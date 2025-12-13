@@ -36,10 +36,22 @@ export class User {
   role: UserRole;
 
   // Social authentication fields
-  @Column({ name: 'google_id', type: 'varchar', length: 255, unique: true, nullable: true })
+  @Column({
+    name: 'google_id',
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    nullable: true,
+  })
   googleId: string | null;
 
-  @Column({ name: 'facebook_id', type: 'varchar', length: 255, unique: true, nullable: true })
+  @Column({
+    name: 'facebook_id',
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    nullable: true,
+  })
   facebookId: string | null;
 
   // Password reset fields
@@ -77,7 +89,9 @@ export class User {
   socketId: string | null;
 
   // Relationship to Profile
-  @OneToOne(() => Profile, (profile) => profile.user, { cascade: true, eager: true })
+  @OneToOne(() => Profile, (profile) => profile.user, {
+    cascade: true,
+    eager: true,
+  })
   profile: Profile;
 }
-

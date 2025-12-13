@@ -1,15 +1,15 @@
 export interface InitiateDirectCallDto {
-    receiverId:string;
+  receiverId: string;
 }
 
 export interface InitiateGroupCallDto {
-    roomId:string;
+  roomId: string;
 }
 
-export interface CallInitiatedResponse{
-    callId:string;
-    agoraToken:string;
-    agoraAppId:string;
-    channelName:string;
-    uid:number;
+export interface CallInitiatedResponse {
+  callId: string;
+  agoraToken: string;
+  agoraAppId: string;
+  channelName: string;
+  uid: number;
 }

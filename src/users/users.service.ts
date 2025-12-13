@@ -17,8 +17,19 @@ export class UsersService {
   /**
    * Sanitize user object by removing sensitive fields
    */
-  private sanitizeUser(user: User): Omit<User, 'passwordHash' | 'resetToken' | 'resetTokenExpires' | 'refreshToken'> {
-    const { passwordHash, resetToken, resetTokenExpires, refreshToken, ...sanitized } = user;
+  private sanitizeUser(
+    user: User,
+  ): Omit<
+    User,
+    'passwordHash' | 'resetToken' | 'resetTokenExpires' | 'refreshToken'
+  > {
+    const {
+      passwordHash,
+      resetToken,
+      resetTokenExpires,
+      refreshToken,
+      ...sanitized
+    } = user;
     return sanitized;
   }
 
@@ -35,7 +46,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.userRepository.findOne({ 
+    const user = await this.userRepository.findOne({
       where: { id },
       relations: ['profile', 'profile.interestedLanguages'],
     });

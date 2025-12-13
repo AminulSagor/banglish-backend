@@ -58,10 +58,17 @@ export class Profile {
 
   // Language fields
   @Index()
-  @Column({ name: 'own_language', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'own_language',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   ownLanguage: string | null;
 
-  @ManyToMany(() => Language, (language) => language.interestedProfiles, { eager: true })
+  @ManyToMany(() => Language, (language) => language.interestedProfiles, {
+    eager: true,
+  })
   @JoinTable({
     name: 'profile_interested_languages',
     joinColumn: { name: 'profile_id', referencedColumnName: 'id' },

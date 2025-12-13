@@ -1,148 +1,340 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Banglish Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS-based backend for a real-time chat and calling application with user authentication, profile management, and online presence tracking.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- 🔐 **Authentication** - JWT-based auth with Google/Facebook OAuth
+- 👤 **User Profiles** - Complete profile management with language preferences
+- 💬 **Real-time Chat** - Direct messages and group chat rooms
+- 📞 **Voice/Video Calls** - 1:1 and group calls via Agora
+- 🟢 **Online Presence** - Real-time user online status
+- 💳 **Billing & Payments** - Call minutes tracking, purchasing, and admin controls
+- 🛡️ **Security** - Helmet, rate limiting, input validation
 
-Banglish Backend - A comprehensive NestJS application with complete authentication and user management system.
+## Quick Start
 
-### Features
+### Prerequisites
 
-- ✅ **User Authentication**: Email/Phone + Password login
-- ✅ **Social Authentication**: Google and Facebook OAuth
-- ✅ **Role-Based Access Control**: USER and ADMIN roles
-- ✅ **Password Recovery**: Email and SMS-based password reset
-- ✅ **User Profiles**: Full name, country, division, district
-- ✅ **JWT Authentication**: Secure token-based authentication
-- ✅ **PostgreSQL Database**: TypeORM with automatic migrations
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
 
-### Quick Links
-
-- 📖 [Quick Start Guide](./QUICK_START.md) - Get started in 5 minutes
-- 🔐 [Authentication Setup](./AUTH_SETUP.md) - Detailed auth configuration
-- 📋 [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) - Complete feature overview
-- 📧 [Email & SMS Configuration](./EMAIL_SMS_CONFIG.md) - Zoho Mail & SMS.net.bd setup
-- 📱 [SMS Setup Guide](./SMS_SETUP.md) - SMS.net.bd integration details
-- 🧪 [Postman Testing Guide](./POSTMAN_TESTING_GUIDE.md) - Complete testing guide
-- 📚 [API Reference](./API_REFERENCE.md) - DTOs, validations, and examples
-
-## Project setup
+### Installation
 
 ```bash
-$ npm install
+# Clone the repository
+git clone <repository-url>
+cd banglish
+
+# Install dependencies
+npm install
+
+# Copy environment file
+cp .env.example .env.development
+
+# Edit .env.development with your database credentials
 ```
 
-## Environment Configuration
-
-1. Copy `.env.example` to `.env.development`
-2. Update database credentials
-3. Set JWT_SECRET to a strong random string
-4. (Optional) Configure OAuth and email/SMS services
-
-See [AUTH_SETUP.md](./AUTH_SETUP.md) for detailed configuration.
-
-## Database Setup
-
-Ensure PostgreSQL is running:
+### Database Setup
 
 ```bash
-# Using Docker
-$ docker run --name banglish-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=banglish -p 5432:5432 -d postgres
+# Run migrations
+npm run migration:run
+
+# Or use synchronize in development (auto-creates tables)
+# Set NODE_ENV=development in .env.development
 ```
 
-## Create Admin User
-
-After starting the application, create an admin user:
+### Running the App
 
 ```bash
-$ npm run create:admin
+# Development
+npm run start:dev
+
+# Production
+npm run build
+npm run start:prod
 ```
 
-Default credentials:
-- Email: `admin@banglish.com`
-- Password: `Admin@123456`
+### Access Points
 
-## Compile and run the project
+| URL | Description |
+|-----|-------------|
+| http://localhost:3000 | API Base URL |
+| http://localhost:3000/api/docs | Swagger Documentation |
+| http://localhost:3000/health | Health Check |
 
-```bash
-# development
-$ npm run start
+## API Documentation
 
-# watch mode
-$ npm run start:dev
+### OpenAPI/Swagger
 
-# production mode
-$ npm run start:prod
+Interactive API documentation is available at `/api/docs` when the server is running.
+
+### Authentication
+
+All endpoints (except auth and health) require a JWT token:
+
+```
+Authorization: Bearer <your-jwt-token>
 ```
 
-## Run tests
+### REST Endpoints
+
+#### Auth (`/auth`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Login with credentials |
+| POST | `/auth/refresh` | Refresh JWT tokens |
+| POST | `/auth/logout` | Logout user |
+| POST | `/auth/forgot-password` | Request password reset |
+| POST | `/auth/reset-password` | Reset password with token |
+| GET | `/auth/google` | Google OAuth login |
+| GET | `/auth/facebook` | Facebook OAuth login |
+| GET | `/auth/profile` | Get current user profile |
+
+#### Users (`/users`) - Admin Only
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users` | List all users |
+| GET | `/users/me` | Get current user |
+| GET | `/users/:id` | Get user by ID |
+| POST | `/users` | Create user |
+| PATCH | `/users/:id` | Update user |
+| DELETE | `/users/:id` | Delete user |
+| PATCH | `/users/:id/activate` | Activate user |
+| PATCH | `/users/:id/deactivate` | Deactivate user |
+
+#### Profile (`/profile`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/profile/me` | Get my profile |
+| PATCH | `/profile/me` | Update my profile |
+| PATCH | `/profile/me/picture` | Update profile picture |
+| GET | `/profile/languages` | List all languages |
+| GET | `/profile/languages/stats` | Language statistics |
+| GET | `/profile/users/by-language` | Find users by language |
+
+#### Chat (`/chat`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/chat/conversations` | Get DM conversations |
+| GET | `/chat/direct/:userId` | Get messages with user |
+| GET | `/chat/unread-count` | Get unread count |
+| POST | `/chat/mark-read/:senderId` | Mark messages as read |
+| GET | `/chat/rooms` | Get my rooms |
+| GET | `/chat/rooms/public` | Get public rooms |
+| POST | `/chat/rooms` | Create room |
+| GET | `/chat/rooms/:roomId` | Get room details |
+| GET | `/chat/rooms/:roomId/messages` | Get room messages |
+| POST | `/chat/rooms/:roomId/join` | Join room |
+| POST | `/chat/rooms/:roomId/leave` | Leave room |
+| PATCH | `/chat/rooms/:roomId` | Update room (Admin) |
+| DELETE | `/chat/rooms/:roomId` | Delete room (Creator) |
+| POST | `/chat/rooms/:roomId/members` | Add member (Admin) |
+| DELETE | `/chat/rooms/:roomId/members/:userId` | Remove member (Admin) |
+| GET | `/chat/rooms/:roomId/admins` | Get room admins |
+| POST | `/chat/rooms/:roomId/admins/:userId` | Make admin (Admin) |
+| DELETE | `/chat/rooms/:roomId/admins/:userId` | Remove admin (Admin) |
+
+#### Call (`/call`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/call/history` | Get call history |
+| GET | `/call/config` | Get Agora config |
+
+#### Presence (`/presence`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/presence/online` | Set online status |
+| POST | `/presence/offline` | Set offline status |
+| POST | `/presence/heartbeat` | Send heartbeat |
+| GET | `/presence/config` | Get presence config |
+| GET | `/presence/active` | Get online users |
+| GET | `/presence/count` | Get online count |
+
+#### Billing (`/billing`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/billing/balance` | Get my minutes balance |
+| GET | `/billing/pricing` | Get current pricing |
+| GET | `/billing/transactions` | Get my transaction history |
+| POST | `/billing/purchase` | Purchase call minutes |
+| GET | `/billing/check-minutes` | Check if I have minutes |
+| GET | `/billing/admin/config` | Get billing configs (Admin) |
+| PATCH | `/billing/admin/config/free-minutes` | Set free minutes for new users (Admin) |
+| PATCH | `/billing/admin/config/:key` | Set any config value (Admin) |
+| GET | `/billing/admin/users/:userId/balance` | Get user balance (Admin) |
+| PATCH | `/billing/admin/users/:userId/balance` | Adjust user balance (Admin) |
+| GET | `/billing/admin/transactions` | Get all transactions (Admin) |
+| GET | `/billing/admin/stats` | Get billing analytics (Admin) |
+| POST | `/billing/webhook/stripe` | Stripe payment webhook |
+| POST | `/billing/webhook/sslcommerz` | SSLCommerz payment webhook |
+
+#### Health (`/health`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Basic health check |
+| GET | `/health/detailed` | Detailed health check |
+| GET | `/health/ping` | Simple ping |
+
+## WebSocket Events
+
+### Chat Namespace (`/chat`)
+
+Connect with JWT token:
+```javascript
+const socket = io('http://localhost:3000/chat', {
+  auth: { token: 'your-jwt-token' }
+});
+```
+
+#### Client → Server Events
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `chat:sendDirect` | `{ receiverId, content, type? }` | Send DM |
+| `chat:sendToRoom` | `{ roomId, content, type? }` | Send room message |
+| `chat:createRoom` | `{ name, memberIds?, description? }` | Create room |
+| `chat:joinRoom` | `{ roomId }` | Join room |
+| `chat:leaveRoom` | `{ roomId }` | Leave room |
+| `chat:typing` | `{ roomId?, receiverId?, isTyping }` | Typing indicator |
+| `chat:markRead` | `{ senderId?, roomId? }` | Mark as read |
+| `call:initiate` | `{ receiverId }` | Start 1:1 call |
+| `call:initiateGroup` | `{ roomId }` | Start group call |
+| `call:accept` | `{ callId }` | Accept call |
+| `call:reject` | `{ callId }` | Reject call |
+| `call:end` | `{ callId }` | End call |
+| `call:toggleMute` | `{ callId }` | Toggle self mute |
+| `call:hostMute` | `{ callId, targetUserId }` | Host mute participant |
+| `call:kickParticipant` | `{ callId, targetUserId }` | Kick from call |
+
+#### Server → Client Events
+| Event | Description |
+|-------|-------------|
+| `chat:connected` | Connection confirmed |
+| `chat:newDirectMessage` | New DM received |
+| `chat:newRoomMessage` | New room message |
+| `chat:userTyping` | User typing status |
+| `call:incoming` | Incoming call |
+| `call:accepted` | Call accepted |
+| `call:rejected` | Call rejected |
+| `call:ended` | Call ended |
+| `call:participantJoined` | Participant joined |
+| `call:participantLeft` | Participant left |
+| `call:muteChanged` | Mute status changed |
+
+## Environment Variables
+
+See `.env.example` for all available configuration options.
+
+### Required Variables
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your-password
+DB_NAME=banglish
+
+# JWT
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=30d
+
+# Agora (for calls)
+AGORA_APPID=your-agora-app-id
+AGORA_CIRTIFICATE=your-agora-certificate
+```
+
+## Billing & Monetization
+
+The application includes a complete billing system for call minutes:
+
+### How It Works
+
+1. **New Users** get free call minutes (default: 30 min, configurable by admin)
+2. **Balance Check** before each call - users cannot call without minutes
+3. **Minute Deduction** after calls end (rounded up to nearest minute)
+4. **Purchasing** additional minutes via Stripe, SSLCommerz, bKash, or Nagad
+
+### User Features
+
+- View current balance (free + paid minutes)
+- View transaction history
+- Purchase additional minutes
+- Check minutes before calling
+
+### Admin Features
+
+- Set free minutes for new users
+- Adjust any user's balance
+- View all transactions
+- Configure pricing (price per minute, minimum purchase)
+- View billing analytics (total revenue, minutes sold/used)
+
+### Payment Methods Supported
+
+| Method | Description |
+|--------|-------------|
+| Stripe | International card payments |
+| SSLCommerz | Bangladesh payment gateway |
+| bKash | Mobile banking (Bangladesh) |
+| Nagad | Mobile banking (Bangladesh) |
+
+### Default Configuration
+
+| Config | Default | Description |
+|--------|---------|-------------|
+| `free_minutes` | 30 | Free minutes for new users |
+| `price_per_minute` | 2.00 | Price in BDT per minute |
+| `min_purchase_minutes` | 10 | Minimum minutes to purchase |
+| `currency` | BDT | Currency code |
+
+## Project Structure
+
+```
+src/
+├── auth/           # Authentication module
+├── billing/        # Billing and payment module
+├── call/           # Voice/video call module
+├── chat/           # Chat and messaging module
+├── common/         # Shared utilities
+├── health/         # Health check endpoints
+├── migrations/     # Database migrations
+├── presence/       # Online presence module
+├── profile/        # User profile module
+└── users/          # User management module
+```
+
+## Scripts
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev      # Start in development mode
+npm run build          # Build for production
+npm run start:prod     # Start production build
+npm run migration:run  # Run database migrations
+npm run migration:generate  # Generate new migration
+npm run create:admin   # Create admin user
+npm run test           # Run unit tests
+npm run test:e2e       # Run e2e tests
 ```
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Production Checklist
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+1. Set `NODE_ENV=production`
+2. Use `.env.production` with secure credentials
+3. Run migrations: `npm run migration:run`
+4. Build: `npm run build`
+5. Start: `npm run start:prod`
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### Health Checks
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- **Liveness**: `GET /health/ping`
+- **Readiness**: `GET /health`
+- **Detailed**: `GET /health/detailed`
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED - Private

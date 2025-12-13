@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class InitialSchema1732593600000 implements MigrationInterface {
-    name = 'InitialSchema1732593600000'
+  name = 'InitialSchema1732593600000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create users table
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create users table
+    await queryRunner.query(`
             CREATE TABLE "users" (
                 "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
                 "email" character varying(255),
@@ -34,17 +34,21 @@ export class InitialSchema1732593600000 implements MigrationInterface {
             )
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX "IDX_users_email" ON "users" ("email")`);
-        await queryRunner.query(`CREATE INDEX "IDX_users_phone" ON "users" ("phone")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX "IDX_users_email" ON "users" ("email")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_users_phone" ON "users" ("phone")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop indexes
-        await queryRunner.query(`DROP INDEX "IDX_users_phone"`);
-        await queryRunner.query(`DROP INDEX "IDX_users_email"`);
-        
-        // Drop table
-        await queryRunner.query(`DROP TABLE "users"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop indexes
+    await queryRunner.query(`DROP INDEX "IDX_users_phone"`);
+    await queryRunner.query(`DROP INDEX "IDX_users_email"`);
+
+    // Drop table
+    await queryRunner.query(`DROP TABLE "users"`);
+  }
 }

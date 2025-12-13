@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Profile } from './entities/profile.entity';
@@ -19,7 +23,10 @@ export class ProfileService {
   ) {}
 
   // Profile methods
-  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<Profile> {
+  async updateProfile(
+    userId: string,
+    updateProfileDto: UpdateProfileDto,
+  ): Promise<Profile> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['profile', 'profile.interestedLanguages'],
@@ -53,7 +60,10 @@ export class ProfileService {
     return await this.profileRepository.save(user.profile);
   }
 
-  async updateProfilePicture(userId: string, profilePicture: string): Promise<Profile> {
+  async updateProfilePicture(
+    userId: string,
+    profilePicture: string,
+  ): Promise<Profile> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['profile'],
@@ -85,13 +95,17 @@ export class ProfileService {
   }
 
   // Language methods
-  async createLanguage(createLanguageDto: CreateLanguageDto): Promise<Language> {
+  async createLanguage(
+    createLanguageDto: CreateLanguageDto,
+  ): Promise<Language> {
     const existingByCode = await this.languageRepository.findOne({
       where: { code: createLanguageDto.code },
     });
 
     if (existingByCode) {
-      throw new ConflictException(`Language with code ${createLanguageDto.code} already exists`);
+      throw new ConflictException(
+        `Language with code ${createLanguageDto.code} already exists`,
+      );
     }
 
     const existingByName = await this.languageRepository.findOne({
@@ -99,7 +113,9 @@ export class ProfileService {
     });
 
     if (existingByName) {
-      throw new ConflictException(`Language with name ${createLanguageDto.name} already exists`);
+      throw new ConflictException(
+        `Language with name ${createLanguageDto.name} already exists`,
+      );
     }
 
     const language = this.languageRepository.create(createLanguageDto);
@@ -120,7 +136,9 @@ export class ProfileService {
     return language;
   }
 
-  async getLanguagesWithUserCount(): Promise<{ language: Language; userCount: number }[]> {
+  async getLanguagesWithUserCount(): Promise<
+    { language: Language; userCount: number }[]
+  > {
     const languages = await this.languageRepository.find({
       order: { name: 'ASC' },
     });

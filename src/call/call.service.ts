@@ -1,10 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
-import { CallSession, CallStatus, CallType, CallEndReason, ParticipantInfo } from './entities/call-session.entity';
+import {
+  CallSession,
+  CallStatus,
+  CallType,
+  CallEndReason,
+  ParticipantInfo,
+} from './entities/call-session.entity';
 import { User } from '../users/entities/user.entity';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class CallService {
@@ -17,12 +29,17 @@ export class CallService {
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private configService: ConfigService,
+    private billingService: BillingService,
   ) {}
 
   /**
    * Generate Agora RTC token for a user to join a channel
    */
-  generateAgoraToken(channelName: string, uid: number, role: 'publisher' | 'audience' = 'publisher'): string {
+  generateAgoraToken(
+    channelName: string,
+    uid: number,
+    role: 'publisher' | 'audience' = 'publisher',
+  ): string {
     const appId = this.configService.get<string>('AGORA_APPID');
     const appCertificate = this.configService.get<string>('AGORA_CIRTIFICATE');
 
@@ -34,7 +51,8 @@ export class CallService {
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-    const agoraRole = role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const agoraRole =
+      role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
 
     return RtcTokenBuilder.buildTokenWithUid(
       appId,
@@ -62,15 +80,15 @@ export class CallService {
   async isUserBusy(userId: string): Promise<boolean> {
     const activeCall = await this.callSessionRepo
       .createQueryBuilder('call')
-      .where('call.callStatus IN (:...statuses)', { 
-        statuses: [CallStatus.RINGING, CallStatus.ONGOING] 
+      .where('call.callStatus IN (:...statuses)', {
+        statuses: [CallStatus.RINGING, CallStatus.ONGOING],
       })
       .andWhere(
         '(call.callerId = :userId OR call.receiverId = :userId OR call.participants LIKE :participantPattern)',
-        { userId, participantPattern: `%${userId}%` }
+        { userId, participantPattern: `%${userId}%` },
       )
       .getOne();
-    
+
     return !!activeCall;
   }
 
@@ -80,15 +98,15 @@ export class CallService {
   async getActiveCallId(userId: string): Promise<string | undefined> {
     const activeCall = await this.callSessionRepo
       .createQueryBuilder('call')
-      .where('call.callStatus IN (:...statuses)', { 
-        statuses: [CallStatus.RINGING, CallStatus.ONGOING] 
+      .where('call.callStatus IN (:...statuses)', {
+        statuses: [CallStatus.RINGING, CallStatus.ONGOING],
       })
       .andWhere(
         '(call.callerId = :userId OR call.receiverId = :userId OR call.participants LIKE :participantPattern)',
-        { userId, participantPattern: `%${userId}%` }
+        { userId, participantPattern: `%${userId}%` },
       )
       .getOne();
-    
+
     return activeCall?.id;
   }
 
@@ -98,12 +116,23 @@ export class CallService {
   /**
    * Initiate a 1:1 direct call
    */
-  async initiateDirectCall(callerId: string, receiverId: string): Promise<{
+  async initiateDirectCall(
+    callerId: string,
+    receiverId: string,
+  ): Promise<{
     callSession: CallSession;
     agoraToken: string;
     agoraAppId: string;
     uid: number;
   }> {
+    // Check if caller has available minutes
+    const hasMinutes = await this.billingService.hasMinutes(callerId, 1);
+    if (!hasMinutes) {
+      throw new BadRequestException(
+        'Insufficient call minutes. Please purchase more minutes to continue.',
+      );
+    }
+
     // Check if caller is busy (DB-based)
     if (await this.isUserBusy(callerId)) {
       throw new BadRequestException('You are already in a call');
@@ -140,12 +169,23 @@ export class CallService {
   /**
    * Initiate a group call
    */
-  async initiateGroupCall(callerId: string, roomId: string): Promise<{
+  async initiateGroupCall(
+    callerId: string,
+    roomId: string,
+  ): Promise<{
     callSession: CallSession;
     agoraToken: string;
     agoraAppId: string;
     uid: number;
   }> {
+    // Check if caller has available minutes
+    const hasMinutes = await this.billingService.hasMinutes(callerId, 1);
+    if (!hasMinutes) {
+      throw new BadRequestException(
+        'Insufficient call minutes. Please purchase more minutes to continue.',
+      );
+    }
+
     // Check if caller is busy (DB-based)
     if (await this.isUserBusy(callerId)) {
       throw new BadRequestException('You are already in a call');
@@ -163,11 +203,13 @@ export class CallService {
       callStatus: CallStatus.ONGOING, // Group calls start immediately
       startedAt: new Date(),
       participants: [callerId],
-      participantDetails: [{
-        userId: callerId,
-        isMuted: false,
-        joinedAt: new Date(),
-      }],
+      participantDetails: [
+        {
+          userId: callerId,
+          isMuted: false,
+          joinedAt: new Date(),
+        },
+      ],
     });
     const saved = await this.callSessionRepo.save(callSession);
 
@@ -186,14 +228,19 @@ export class CallService {
   /**
    * Accept an incoming call
    */
-  async acceptCall(callId: string, userId: string): Promise<{
+  async acceptCall(
+    callId: string,
+    userId: string,
+  ): Promise<{
     callSession: CallSession;
     agoraToken: string;
     agoraAppId: string;
     uid: number;
   }> {
     // Note: Timeout clearing is handled by ChatGateway
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -223,13 +270,18 @@ export class CallService {
   /**
    * Join an ongoing group call
    */
-  async joinGroupCall(callId: string, userId: string): Promise<{
+  async joinGroupCall(
+    callId: string,
+    userId: string,
+  ): Promise<{
     callSession: CallSession;
     agoraToken: string;
     agoraAppId: string;
     uid: number;
   }> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -252,7 +304,7 @@ export class CallService {
     // This marks them as busy since they appear in an active call
     if (!callSession.participants.includes(userId)) {
       callSession.participants = [...callSession.participants, userId];
-      
+
       // Add to participantDetails with mute state
       const participantDetails = callSession.participantDetails || [];
       participantDetails.push({
@@ -261,7 +313,7 @@ export class CallService {
         joinedAt: new Date(),
       });
       callSession.participantDetails = participantDetails;
-      
+
       await this.callSessionRepo.save(callSession);
     }
 
@@ -282,7 +334,9 @@ export class CallService {
    */
   async rejectCall(callId: string, userId: string): Promise<CallSession> {
     // Note: Timeout clearing is handled by ChatGateway
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -306,7 +360,9 @@ export class CallService {
    */
   async cancelCall(callId: string, userId: string): Promise<CallSession> {
     // Note: Timeout clearing is handled by ChatGateway
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -327,15 +383,43 @@ export class CallService {
   /**
    * End an ongoing call
    */
-  async endCall(callId: string, userId: string): Promise<{ callSession: CallSession; duration: number }> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+  async endCall(
+    callId: string,
+    userId: string,
+  ): Promise<{
+    callSession: CallSession;
+    duration: number;
+    minutesDeducted?: number;
+  }> {
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
 
     // For group calls, just remove this user from participants
     if (callSession.callType === CallType.GROUP) {
-      callSession.participants = callSession.participants.filter(p => p !== userId);
+      // Calculate duration for this user and deduct minutes
+      const userDuration = callSession.startedAt
+        ? Math.floor(
+            (new Date().getTime() - callSession.startedAt.getTime()) / 1000,
+          )
+        : 0;
+      const minutesToDeduct = Math.ceil(userDuration / 60); // Round up to nearest minute
+
+      // Deduct minutes for leaving user
+      if (minutesToDeduct > 0) {
+        await this.billingService.deductMinutes(
+          userId,
+          minutesToDeduct,
+          callId,
+        );
+      }
+
+      callSession.participants = callSession.participants.filter(
+        (p) => p !== userId,
+      );
 
       // If no participants left, end the call
       if (callSession.participants.length === 0) {
@@ -346,11 +430,11 @@ export class CallService {
 
       await this.callSessionRepo.save(callSession);
 
-      const duration = callSession.startedAt
-        ? Math.floor((new Date().getTime() - callSession.startedAt.getTime()) / 1000)
-        : 0;
-
-      return { callSession, duration };
+      return {
+        callSession,
+        duration: userDuration,
+        minutesDeducted: minutesToDeduct,
+      };
     }
 
     // For direct calls, end immediately
@@ -360,19 +444,36 @@ export class CallService {
     callSession.endedAt = new Date();
     await this.callSessionRepo.save(callSession);
 
-    // Calculate duration
+    // Calculate duration in seconds
     const duration = callSession.startedAt
-      ? Math.floor((callSession.endedAt.getTime() - callSession.startedAt.getTime()) / 1000)
+      ? Math.floor(
+          (callSession.endedAt.getTime() - callSession.startedAt.getTime()) /
+            1000,
+        )
       : 0;
 
-    return { callSession, duration };
+    // Calculate minutes to deduct (round up to nearest minute)
+    const minutesToDeduct = Math.ceil(duration / 60);
+
+    // Deduct minutes from the caller (who initiated the call)
+    if (minutesToDeduct > 0 && callSession.callerId) {
+      await this.billingService.deductMinutes(
+        callSession.callerId,
+        minutesToDeduct,
+        callId,
+      );
+    }
+
+    return { callSession, duration, minutesDeducted: minutesToDeduct };
   }
 
   /**
    * Mark call as missed (timeout)
    */
   async missCall(callId: string): Promise<CallSession> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -404,17 +505,18 @@ export class CallService {
   /**
    * Get call history for a user
    */
-  async getCallHistory(userId: string, page: number = 1, limit: number = 20): Promise<{
+  async getCallHistory(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
     calls: CallSession[];
     total: number;
     page: number;
     totalPages: number;
   }> {
     const [calls, total] = await this.callSessionRepo.findAndCount({
-      where: [
-        { callerId: userId },
-        { receiverId: userId },
-      ],
+      where: [{ callerId: userId }, { receiverId: userId }],
       order: { startedAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -442,10 +544,12 @@ export class CallService {
     return {
       id: user.id,
       email: user.email,
-      profile: user.profile ? {
-        fullName: user.profile.fullName,
-        profilePicture: user.profile.profilePicture,
-      } : null,
+      profile: user.profile
+        ? {
+            fullName: user.profile.fullName,
+            profilePicture: user.profile.profilePicture,
+          }
+        : null,
     };
   }
 
@@ -461,19 +565,28 @@ export class CallService {
   /**
    * Get participant details for a user in a call
    */
-  getParticipantDetails(callSession: CallSession, userId: string): ParticipantInfo | undefined {
-    return callSession.participantDetails?.find(p => p.userId === userId);
+  getParticipantDetails(
+    callSession: CallSession,
+    userId: string,
+  ): ParticipantInfo | undefined {
+    return callSession.participantDetails?.find((p) => p.userId === userId);
   }
 
   /**
    * Mute/unmute yourself in a call
    * Any participant can mute/unmute themselves
    */
-  async toggleSelfMute(callId: string, userId: string, isMuted: boolean): Promise<{
+  async toggleSelfMute(
+    callId: string,
+    userId: string,
+    isMuted: boolean,
+  ): Promise<{
     callSession: CallSession;
     participant: ParticipantInfo;
   }> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -488,9 +601,11 @@ export class CallService {
     }
 
     // Update mute state in participantDetails
-    let participantDetails = callSession.participantDetails || [];
-    const participantIndex = participantDetails.findIndex(p => p.userId === userId);
-    
+    const participantDetails = callSession.participantDetails || [];
+    const participantIndex = participantDetails.findIndex(
+      (p) => p.userId === userId,
+    );
+
     if (participantIndex === -1) {
       // Add participant details if missing (backward compatibility)
       participantDetails.push({
@@ -505,7 +620,7 @@ export class CallService {
     callSession.participantDetails = participantDetails;
     await this.callSessionRepo.save(callSession);
 
-    const participant = participantDetails.find(p => p.userId === userId)!;
+    const participant = participantDetails.find((p) => p.userId === userId)!;
 
     return { callSession, participant };
   }
@@ -515,21 +630,25 @@ export class CallService {
    * Only the host can mute others; participants can only unmute themselves
    */
   async hostMuteParticipant(
-    callId: string, 
-    hostId: string, 
-    targetUserId: string, 
-    isMuted: boolean
+    callId: string,
+    hostId: string,
+    targetUserId: string,
+    isMuted: boolean,
   ): Promise<{
     callSession: CallSession;
     participant: ParticipantInfo;
   }> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
 
     if (callSession.callType !== CallType.GROUP) {
-      throw new BadRequestException('Mute control is only available for group calls');
+      throw new BadRequestException(
+        'Mute control is only available for group calls',
+      );
     }
 
     if (callSession.callStatus !== CallStatus.ONGOING) {
@@ -538,12 +657,16 @@ export class CallService {
 
     // Verify the requester is the host
     if (!this.isHost(callSession, hostId)) {
-      throw new ForbiddenException('Only the host can mute/unmute other participants');
+      throw new ForbiddenException(
+        'Only the host can mute/unmute other participants',
+      );
     }
 
     // Host cannot unmute others (privacy: user must unmute themselves)
     if (!isMuted) {
-      throw new BadRequestException('Host can only mute participants. Participants must unmute themselves.');
+      throw new BadRequestException(
+        'Host can only mute participants. Participants must unmute themselves.',
+      );
     }
 
     // Check if target is a participant
@@ -552,9 +675,11 @@ export class CallService {
     }
 
     // Update mute state
-    let participantDetails = callSession.participantDetails || [];
-    const participantIndex = participantDetails.findIndex(p => p.userId === targetUserId);
-    
+    const participantDetails = callSession.participantDetails || [];
+    const participantIndex = participantDetails.findIndex(
+      (p) => p.userId === targetUserId,
+    );
+
     if (participantIndex === -1) {
       participantDetails.push({
         userId: targetUserId,
@@ -568,7 +693,9 @@ export class CallService {
     callSession.participantDetails = participantDetails;
     await this.callSessionRepo.save(callSession);
 
-    const participant = participantDetails.find(p => p.userId === targetUserId)!;
+    const participant = participantDetails.find(
+      (p) => p.userId === targetUserId,
+    )!;
 
     return { callSession, participant };
   }
@@ -576,14 +703,22 @@ export class CallService {
   /**
    * Transfer host role to another participant
    */
-  async transferHost(callId: string, currentHostId: string, newHostId: string): Promise<CallSession> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+  async transferHost(
+    callId: string,
+    currentHostId: string,
+    newHostId: string,
+  ): Promise<CallSession> {
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
 
     if (callSession.callType !== CallType.GROUP) {
-      throw new BadRequestException('Host transfer is only available for group calls');
+      throw new BadRequestException(
+        'Host transfer is only available for group calls',
+      );
     }
 
     if (!this.isHost(callSession, currentHostId)) {
@@ -591,7 +726,9 @@ export class CallService {
     }
 
     if (!callSession.participants.includes(newHostId)) {
-      throw new BadRequestException('New host must be a participant in the call');
+      throw new BadRequestException(
+        'New host must be a participant in the call',
+      );
     }
 
     callSession.hostId = newHostId;
@@ -603,8 +740,14 @@ export class CallService {
   /**
    * Host removes/kicks a participant from the call
    */
-  async kickParticipant(callId: string, hostId: string, targetUserId: string): Promise<CallSession> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+  async kickParticipant(
+    callId: string,
+    hostId: string,
+    targetUserId: string,
+  ): Promise<CallSession> {
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }
@@ -624,7 +767,9 @@ export class CallService {
 
     // Host cannot kick themselves
     if (targetUserId === hostId) {
-      throw new BadRequestException('Host cannot kick themselves. Transfer host first or leave the call.');
+      throw new BadRequestException(
+        'Host cannot kick themselves. Transfer host first or leave the call.',
+      );
     }
 
     // Check if target is a participant
@@ -633,12 +778,14 @@ export class CallService {
     }
 
     // Remove from participants list
-    callSession.participants = callSession.participants.filter(p => p !== targetUserId);
+    callSession.participants = callSession.participants.filter(
+      (p) => p !== targetUserId,
+    );
 
     // Remove from participantDetails
     if (callSession.participantDetails) {
       callSession.participantDetails = callSession.participantDetails.filter(
-        p => p.userId !== targetUserId
+        (p) => p.userId !== targetUserId,
       );
     }
 
@@ -654,7 +801,9 @@ export class CallService {
     hostId: string;
     participants: ParticipantInfo[];
   }> {
-    const callSession = await this.callSessionRepo.findOne({ where: { id: callId } });
+    const callSession = await this.callSessionRepo.findOne({
+      where: { id: callId },
+    });
     if (!callSession) {
       throw new NotFoundException('Call not found');
     }

@@ -1,4 +1,9 @@
-import { IsEmail, IsOptional, IsPhoneNumber, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsPhoneNumber,
+  ValidateIf,
+} from 'class-validator';
 
 export class ForgotPasswordDto {
   @ValidateIf((o) => !o.phone)

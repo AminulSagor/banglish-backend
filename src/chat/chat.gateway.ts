@@ -45,7 +45,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Set timeout for unanswered call (30 seconds)
    */
-  private setCallTimeout(callId: string, callback: () => Promise<void>, ms: number = 30000): void {
+  private setCallTimeout(
+    callId: string,
+    callback: () => Promise<void>,
+    ms: number = 30000,
+  ): void {
     this.clearCallTimeout(callId); // Clear any existing timeout
     const timeout = setTimeout(callback, ms);
     this.callTimeouts.set(callId, timeout);
@@ -111,12 +115,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(client: AuthenticatedSocket) {
     if (client.userId) {
       this.logger.log(`User ${client.userId} disconnected from chat`);
-      
+
       // Check if user was in a call and end it (DB-based)
-      const activeCallId = await this.callService.getActiveCallId(client.userId);
+      const activeCallId = await this.callService.getActiveCallId(
+        client.userId,
+      );
       if (activeCallId) {
         try {
-          const result = await this.callService.endCall(activeCallId, client.userId);
+          const result = await this.callService.endCall(
+            activeCallId,
+            client.userId,
+          );
           this.server.to(`call:${activeCallId}`).emit('call:ended', {
             callId: activeCallId,
             duration: result.duration,
@@ -125,7 +134,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           // Clear any pending timeout for this call
           this.clearCallTimeout(activeCallId);
         } catch (error) {
-          this.logger.error(`Error ending call on disconnect: ${error.message}`);
+          this.logger.error(
+            `Error ending call on disconnect: ${error.message}`,
+          );
         }
       }
     }
@@ -137,7 +148,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDirectMessage(
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody()
-    rawData: { receiverId: string; content: string; type?: MessageType } | string,
+    rawData:
+      | { receiverId: string; content: string; type?: MessageType }
+      | string,
   ) {
     if (!client.userId) {
       return { error: 'Not authenticated' };
@@ -145,8 +158,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Parse data if it's a string (Postman sends as string sometimes)
     const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-    
-    this.logger.log(`Direct message from ${client.userId}: ${JSON.stringify(data)}`);
+
+    this.logger.log(
+      `Direct message from ${client.userId}: ${JSON.stringify(data)}`,
+    );
 
     if (!data.receiverId || !data.content) {
       return { error: 'receiverId and content are required' };
@@ -258,7 +273,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleCreateRoom(
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody()
-    rawData: { name: string; memberIds: string[]; description?: string } | string,
+    rawData:
+      | { name: string; memberIds: string[]; description?: string }
+      | string,
   ) {
     if (!client.userId) {
       return { error: 'Not authenticated' };
@@ -419,7 +436,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
 
       // Broadcast to all room members
-      this.server.to(`room:${data.roomId}`).emit('chat:newRoomMessage', message);
+      this.server
+        .to(`room:${data.roomId}`)
+        .emit('chat:newRoomMessage', message);
 
       return { success: true, message };
     } catch (error) {
@@ -471,7 +490,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { error: 'roomId and userId are required' };
     }
 
-    this.logger.log(`Add member: room=${data.roomId}, user=${data.userId}, requester=${client.userId}`);
+    this.logger.log(
+      `Add member: room=${data.roomId}, user=${data.userId}, requester=${client.userId}`,
+    );
 
     try {
       const room = await this.chatService.addMember(
@@ -556,6 +577,90 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // ==================== ADMIN MANAGEMENT ====================
+
+  /**
+   * Promote a member to admin
+   * Only existing admins can do this
+   */
+  @SubscribeMessage('chat:makeAdmin')
+  async handleMakeAdmin(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { roomId: string; userId: string },
+  ) {
+    if (!client.userId) {
+      return { error: 'Not authenticated' };
+    }
+
+    try {
+      await this.chatService.makeAdmin(data.roomId, data.userId, client.userId);
+
+      // Notify all room members about the admin change
+      this.server.to(`room:${data.roomId}`).emit('chat:adminAdded', {
+        roomId: data.roomId,
+        userId: data.userId,
+        promotedBy: client.userId,
+      });
+
+      return { success: true };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  /**
+   * Demote an admin to regular member
+   * Only existing admins can do this
+   */
+  @SubscribeMessage('chat:removeAdmin')
+  async handleRemoveAdmin(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { roomId: string; userId: string },
+  ) {
+    if (!client.userId) {
+      return { error: 'Not authenticated' };
+    }
+
+    try {
+      await this.chatService.removeAdmin(
+        data.roomId,
+        data.userId,
+        client.userId,
+      );
+
+      // Notify all room members about the admin change
+      this.server.to(`room:${data.roomId}`).emit('chat:adminRemoved', {
+        roomId: data.roomId,
+        userId: data.userId,
+        demotedBy: client.userId,
+      });
+
+      return { success: true };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  /**
+   * Get list of admins for a room
+   */
+  @SubscribeMessage('chat:getAdmins')
+  async handleGetAdmins(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { roomId: string },
+  ) {
+    if (!client.userId) {
+      return { error: 'Not authenticated' };
+    }
+
+    try {
+      const admins = await this.chatService.getRoomAdmins(data.roomId);
+      return { admins };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
   // ==================== TYPING INDICATOR ====================
 
   @SubscribeMessage('chat:typing')
@@ -576,7 +681,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     } else if (data.receiverId) {
       // Typing in DM - send to receiver only
-      this.server.to(`user:${data.receiverId}`).emit('chat:userTyping', payload);
+      this.server
+        .to(`user:${data.receiverId}`)
+        .emit('chat:userTyping', payload);
     }
 
     return { success: true };
@@ -604,7 +711,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Check if receiver is online
       const receiverRoom = `user:${data.receiverId}`;
       const receiverSockets = await this.server.in(receiverRoom).fetchSockets();
-      
+
       if (receiverSockets.length === 0) {
         return { error: 'User is offline' };
       }
@@ -630,7 +737,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Set 30s timeout for unanswered call (managed by gateway)
       this.setCallTimeout(result.callSession.id, async () => {
-        const missedCall = await this.callService.missCall(result.callSession.id);
+        const missedCall = await this.callService.missCall(
+          result.callSession.id,
+        );
         this.server.to(`call:${result.callSession.id}`).emit('call:missed', {
           callId: result.callSession.id,
         });
@@ -639,7 +748,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
       });
 
-      this.logger.log(`Call initiated: ${result.callSession.id} from ${client.userId} to ${data.receiverId}`);
+      this.logger.log(
+        `Call initiated: ${result.callSession.id} from ${client.userId} to ${data.receiverId}`,
+      );
 
       return {
         success: true,
@@ -675,7 +786,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Clear the timeout since call is being accepted
       this.clearCallTimeout(data.callId);
 
-      const result = await this.callService.acceptCall(data.callId, client.userId);
+      const result = await this.callService.acceptCall(
+        data.callId,
+        client.userId,
+      );
 
       // Join receiver to call room
       client.join(`call:${data.callId}`);
@@ -802,7 +916,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Leave the call room
       client.leave(`call:${data.callId}`);
 
-      this.logger.log(`Call ended: ${data.callId} by ${client.userId}, duration: ${result.duration}s`);
+      this.logger.log(
+        `Call ended: ${data.callId} by ${client.userId}, duration: ${result.duration}s`,
+      );
 
       return { success: true, duration: result.duration };
     } catch (error) {
@@ -831,12 +947,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     try {
       // Verify user is room member
-      const isMember = await this.chatService.isRoomMember(data.roomId, client.userId);
+      const isMember = await this.chatService.isRoomMember(
+        data.roomId,
+        client.userId,
+      );
       if (!isMember) {
         return { error: 'Not a member of this room' };
       }
 
-      const result = await this.callService.initiateGroupCall(client.userId, data.roomId);
+      const result = await this.callService.initiateGroupCall(
+        client.userId,
+        data.roomId,
+      );
 
       // Join caller to call socket room
       client.join(`call:${result.callSession.id}`);
@@ -853,7 +975,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         isGroupCall: true,
       });
 
-      this.logger.log(`Group call initiated: ${result.callSession.id} in room ${data.roomId}`);
+      this.logger.log(
+        `Group call initiated: ${result.callSession.id} in room ${data.roomId}`,
+      );
 
       return {
         success: true,
@@ -888,7 +1012,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const result = await this.callService.joinGroupCall(data.callId, client.userId);
+      const result = await this.callService.joinGroupCall(
+        data.callId,
+        client.userId,
+      );
 
       // Join socket room
       client.join(`call:${data.callId}`);
@@ -997,7 +1124,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         mutedBy: client.userId, // Self-muted
       });
 
-      this.logger.log(`User ${client.userId} ${data.isMuted ? 'muted' : 'unmuted'} themselves in call ${data.callId}`);
+      this.logger.log(
+        `User ${client.userId} ${data.isMuted ? 'muted' : 'unmuted'} themselves in call ${data.callId}`,
+      );
 
       return { success: true, isMuted: data.isMuted };
     } catch (error) {
@@ -1044,7 +1173,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         mutedBy: client.userId,
       });
 
-      this.logger.log(`Host ${client.userId} muted user ${data.targetUserId} in call ${data.callId}`);
+      this.logger.log(
+        `Host ${client.userId} muted user ${data.targetUserId} in call ${data.callId}`,
+      );
 
       return { success: true };
     } catch (error) {
@@ -1083,7 +1214,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         newHostId: data.newHostId,
       });
 
-      this.logger.log(`Host transferred from ${client.userId} to ${data.newHostId} in call ${data.callId}`);
+      this.logger.log(
+        `Host transferred from ${client.userId} to ${data.newHostId} in call ${data.callId}`,
+      );
 
       return { success: true, newHostId: data.newHostId };
     } catch (error) {
@@ -1128,7 +1261,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         kickedBy: client.userId,
       });
 
-      this.logger.log(`Host ${client.userId} kicked user ${data.targetUserId} from call ${data.callId}`);
+      this.logger.log(
+        `Host ${client.userId} kicked user ${data.targetUserId} from call ${data.callId}`,
+      );
 
       return { success: true };
     } catch (error) {
@@ -1154,7 +1289,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const result = await this.callService.getParticipantsWithStatus(data.callId);
+      const result = await this.callService.getParticipantsWithStatus(
+        data.callId,
+      );
 
       // Get user info for each participant
       const participantsWithInfo = await Promise.all(

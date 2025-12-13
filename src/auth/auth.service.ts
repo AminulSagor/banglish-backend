@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -45,14 +52,18 @@ export class AuthService {
 
     // Check if user already exists
     if (email) {
-      const existingUser = await this.userRepository.findOne({ where: { email } });
+      const existingUser = await this.userRepository.findOne({
+        where: { email },
+      });
       if (existingUser) {
         throw new ConflictException('Email already registered');
       }
     }
 
     if (phone) {
-      const existingUser = await this.userRepository.findOne({ where: { phone } });
+      const existingUser = await this.userRepository.findOne({
+        where: { phone },
+      });
       if (existingUser) {
         throw new ConflictException('Phone number already registered');
       }
@@ -63,7 +74,10 @@ export class AuthService {
 
     // Fetch interested languages if provided
     let interestedLanguages: Language[] = [];
-    if (profile?.interestedLanguageIds && profile.interestedLanguageIds.length > 0) {
+    if (
+      profile?.interestedLanguageIds &&
+      profile.interestedLanguageIds.length > 0
+    ) {
       interestedLanguages = await this.languageRepository.find({
         where: { id: In(profile.interestedLanguageIds) },
       });
@@ -74,20 +88,24 @@ export class AuthService {
       email,
       phone,
       passwordHash,
-      profile: profile ? {
-        fullName: profile.fullName,
-        country: profile.country,
-        division: profile.division,
-        district: profile.district,
-        profilePicture: profile.profilePicture,
-        bio: profile.bio,
-        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
-        gender: profile.gender,
-        address: profile.address,
-        postalCode: profile.postalCode,
-        ownLanguage: profile.ownLanguage,
-        interestedLanguages,
-      } : undefined,
+      profile: profile
+        ? {
+            fullName: profile.fullName,
+            country: profile.country,
+            division: profile.division,
+            district: profile.district,
+            profilePicture: profile.profilePicture,
+            bio: profile.bio,
+            dateOfBirth: profile.dateOfBirth
+              ? new Date(profile.dateOfBirth)
+              : null,
+            gender: profile.gender,
+            address: profile.address,
+            postalCode: profile.postalCode,
+            ownLanguage: profile.ownLanguage,
+            interestedLanguages,
+          }
+        : undefined,
     });
 
     await this.userRepository.save(user);
@@ -114,7 +132,9 @@ export class AuthService {
     }
 
     if (!user.passwordHash) {
-      throw new UnauthorizedException('Please use social login or reset your password');
+      throw new UnauthorizedException(
+        'Please use social login or reset your password',
+      );
     }
 
     // Verify password
@@ -173,7 +193,11 @@ export class AuthService {
       where: { resetToken },
     });
 
-    if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+    if (
+      !user ||
+      !user.resetTokenExpires ||
+      user.resetTokenExpires < new Date()
+    ) {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
@@ -269,7 +293,9 @@ export class AuthService {
   /**
    * Generate both access and refresh tokens
    */
-  async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+  async generateTokens(
+    user: User,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -277,8 +303,10 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '30d';
-    const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
+    const accessExpiresIn =
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '30d';
+    const refreshExpiresIn =
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
 
     const [accessToken, refreshToken] = await Promise.all([
       // Access token - short lived (15 minutes)
@@ -288,14 +316,18 @@ export class AuthService {
       }),
       // Refresh token - long lived (7 days)
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET'),
+        secret:
+          this.configService.get<string>('JWT_REFRESH_SECRET') ||
+          this.configService.get<string>('JWT_SECRET'),
         expiresIn: refreshExpiresIn as any,
       }),
     ]);
 
     // Hash and store refresh token in database
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.userRepository.update(user.id, { refreshToken: hashedRefreshToken });
+    await this.userRepository.update(user.id, {
+      refreshToken: hashedRefreshToken,
+    });
 
     return { accessToken, refreshToken };
   }
@@ -303,13 +335,17 @@ export class AuthService {
   /**
    * Refresh access token using refresh token
    */
-  async refreshTokens(refreshTokenDto: RefreshTokenDto): Promise<{ accessToken: string; refreshToken: string }> {
+  async refreshTokens(
+    refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const { refreshToken } = refreshTokenDto;
 
     try {
       // Verify the refresh token
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET'),
+        secret:
+          this.configService.get<string>('JWT_REFRESH_SECRET') ||
+          this.configService.get<string>('JWT_SECRET'),
       });
 
       const user = await this.userRepository.findOne({
@@ -321,7 +357,10 @@ export class AuthService {
       }
 
       // Verify the stored hashed refresh token matches
-      const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refreshToken);
+      const isRefreshTokenValid = await bcrypt.compare(
+        refreshToken,
+        user.refreshToken,
+      );
       if (!isRefreshTokenValid) {
         throw new ForbiddenException('Access denied');
       }
@@ -364,19 +403,28 @@ export class AuthService {
   /**
    * Generate tokens for OAuth (async version for callbacks)
    */
-  async generateTokensForOAuth(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+  async generateTokensForOAuth(
+    user: User,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.generateTokens(user);
   }
 
   private sanitizeUser(user: User) {
-    const { passwordHash, resetToken, resetTokenExpires, refreshToken, ...sanitized } = user;
+    const {
+      passwordHash,
+      resetToken,
+      resetTokenExpires,
+      refreshToken,
+      ...sanitized
+    } = user;
     return sanitized;
   }
 
   private async sendPasswordResetEmail(email: string, resetToken: string) {
     const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${resetToken}`;
     const fromEmail = this.configService.get<string>('SMTP_FROM');
-    const fromName = this.configService.get<string>('SMTP_FROM_NAME') || 'Banglish';
+    const fromName =
+      this.configService.get<string>('SMTP_FROM_NAME') || 'Banglish';
 
     try {
       await this.transporter.sendMail({
@@ -423,7 +471,10 @@ export class AuthService {
       this.logger.log(`Password reset email sent to ${email}`);
     } catch (error) {
       // Log error but don't throw - we don't want to reveal if email exists
-      this.logger.error(`Failed to send password reset email to ${email}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to send password reset email to ${email}`,
+        error instanceof Error ? error.stack : error,
+      );
       // In production, you might want to queue this for retry or alert admins
     }
   }
@@ -435,7 +486,9 @@ export class AuthService {
     const smsContentId = this.configService.get<string>('SMS_CONTENT_ID');
 
     if (!smsApiKey || !smsApiUrl) {
-      this.logger.warn('SMS service not configured. Password reset SMS not sent.');
+      this.logger.warn(
+        'SMS service not configured. Password reset SMS not sent.',
+      );
       return;
     }
 
@@ -456,11 +509,11 @@ export class AuthService {
       formData.append('api_key', smsApiKey);
       formData.append('msg', message);
       formData.append('to', formattedPhone);
-      
+
       if (smsSenderId) {
         formData.append('sender_id', smsSenderId);
       }
-      
+
       if (smsContentId) {
         formData.append('content_id', smsContentId);
       }
@@ -471,15 +524,22 @@ export class AuthService {
       });
 
       const result = await response.json();
-      
+
       if (result.error === 0) {
-        this.logger.log(`Password reset SMS sent to ${formattedPhone}. Request ID: ${result.data?.request_id}`);
+        this.logger.log(
+          `Password reset SMS sent to ${formattedPhone}. Request ID: ${result.data?.request_id}`,
+        );
       } else {
-        this.logger.error(`SMS sending failed. Error code: ${result.error}, Message: ${result.msg}`);
+        this.logger.error(
+          `SMS sending failed. Error code: ${result.error}, Message: ${result.msg}`,
+        );
       }
     } catch (error) {
       // Log error but don't throw - we don't want to reveal if phone exists
-      this.logger.error(`Failed to send password reset SMS to ${formattedPhone}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to send password reset SMS to ${formattedPhone}`,
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 }

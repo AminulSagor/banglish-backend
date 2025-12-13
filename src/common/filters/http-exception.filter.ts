@@ -73,9 +73,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         exception.stack,
       );
       // Don't expose internal error details in production
-      message = process.env.NODE_ENV === 'development' 
-        ? exception.message 
-        : 'An unexpected error occurred';
+      message =
+        process.env.NODE_ENV === 'development'
+          ? exception.message
+          : 'An unexpected error occurred';
     }
 
     // Log all errors
@@ -108,12 +109,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     return typeormErrors.includes(exception.constructor.name);
   }
 
-  private handleTypeORMError(exception: any): { status: number; message: string; error: string } {
+  private handleTypeORMError(exception: any): {
+    status: number;
+    message: string;
+    error: string;
+  } {
     const errorName = exception.constructor.name;
 
     // Handle unique constraint violations
-    if (exception.code === '23505' || exception.message?.includes('duplicate key')) {
-      const match = exception.detail?.match(/Key \((\w+)\)=\((.+)\) already exists/);
+    if (
+      exception.code === '23505' ||
+      exception.message?.includes('duplicate key')
+    ) {
+      const match = exception.detail?.match(
+        /Key \((\w+)\)=\((.+)\) already exists/,
+      );
       const field = match?.[1] || 'field';
       return {
         status: HttpStatus.CONFLICT,
@@ -154,9 +164,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // Default database error
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: process.env.NODE_ENV === 'development' 
-        ? exception.message 
-        : 'Database operation failed',
+      message:
+        process.env.NODE_ENV === 'development'
+          ? exception.message
+          : 'Database operation failed',
       error: 'Internal Server Error',
     };
   }
@@ -174,7 +185,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // Convert snake_case to Title Case
     return field
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   }
 }

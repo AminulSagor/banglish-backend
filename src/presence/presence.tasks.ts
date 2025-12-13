@@ -4,13 +4,13 @@ import { PresenceService } from './presence.service';
 
 /**
  * Scheduled tasks for presence management
- * 
+ *
  * This runs a cleanup job to mark stale users as offline.
  * The interval is configurable in presence.constants.ts
- * 
+ *
  * To change the cron interval, modify the @Cron decorator below.
  * Common cron expressions:
- *   EVERY_MINUTE, EVERY_5_MINUTES, EVERY_10_MINUTES, 
+ *   EVERY_MINUTE, EVERY_5_MINUTES, EVERY_10_MINUTES,
  *   EVERY_30_MINUTES, EVERY_HOUR
  */
 @Injectable()
