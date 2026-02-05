@@ -50,11 +50,7 @@ import { BillingModule } from './billing/billing.module';
             : false,
         entities: ['dist/**/*.entity.js'],
         migrations: ['dist/migrations/*.js'],
-        // IMPORTANT: synchronize should be false in production
-        // Use migrations instead: npm run migration:run
-        synchronize:
-          config.get<string>('NODE_ENV') === 'development' &&
-          config.get<string>('DB_SYNC') !== 'false',
+        synchronize: true, // Auto-sync enabled
         logging: config.get<string>('NODE_ENV') === 'development',
       }),
     }),

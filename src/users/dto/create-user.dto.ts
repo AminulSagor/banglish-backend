@@ -37,11 +37,11 @@ export class CreateUserDto {
 
   @IsString()
   @IsOptional()
-  division?: string;
+  district?: string;
 
   @IsString()
   @IsOptional()
-  district?: string;
+  thana?: string;
 
   @IsString()
   @IsOptional()

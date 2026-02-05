@@ -4,24 +4,25 @@ import {
   IsDateString,
   IsArray,
   IsUUID,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreateProfileDto {
   @IsString()
-  @IsOptional()
-  fullName?: string;
+  @IsNotEmpty()
+  fullName: string;
 
   @IsString()
-  @IsOptional()
-  country?: string;
+  @IsNotEmpty()
+  country: string;
 
   @IsString()
-  @IsOptional()
-  division?: string;
+  @IsNotEmpty()
+  district: string;
 
   @IsString()
-  @IsOptional()
-  district?: string;
+  @IsNotEmpty()
+  thana: string;
 
   @IsString()
   @IsOptional()

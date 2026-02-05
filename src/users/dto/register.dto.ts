@@ -27,6 +27,5 @@ export class RegisterDto {
 
   @ValidateNested()
   @Type(() => CreateProfileDto)
-  @IsOptional()
-  profile?: CreateProfileDto;
+  profile: CreateProfileDto;
 }

@@ -34,17 +34,22 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {
-    // Initialize email transporter for Zoho Mail
-    const smtpSecure = this.configService.get<string>('SMTP_SECURE') === 'true';
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
-      secure: smtpSecure, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-    });
+    // Initialize email transporter for Zoho Mail only if SMTP is configured
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    if (smtpHost) {
+      const smtpSecure = this.configService.get<string>('SMTP_SECURE') === 'true';
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: this.configService.get<number>('SMTP_PORT') || 587,
+        secure: smtpSecure, // true for 465, false for other ports
+        auth: {
+          user: this.configService.get<string>('SMTP_USER'),
+          pass: this.configService.get<string>('SMTP_PASS'),
+        },
+      });
+    } else {
+      this.logger.warn('SMTP not configured - password reset emails will not be sent');
+    }
   }
 
   async register(registerDto: RegisterDto) {
@@ -92,8 +97,8 @@ export class AuthService {
         ? {
             fullName: profile.fullName,
             country: profile.country,
-            division: profile.division,
             district: profile.district,
+            thana: profile.thana,
             profilePicture: profile.profilePicture,
             bio: profile.bio,
             dateOfBirth: profile.dateOfBirth
@@ -421,6 +426,11 @@ export class AuthService {
   }
 
   private async sendPasswordResetEmail(email: string, resetToken: string) {
+    if (!this.transporter) {
+      this.logger.warn('SMTP not configured - cannot send password reset email');
+      return;
+    }
+
     const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${resetToken}`;
     const fromEmail = this.configService.get<string>('SMTP_FROM');
     const fromName =

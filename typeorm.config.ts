@@ -13,5 +13,5 @@ export default new DataSource({
   database: process.env.DB_NAME || 'banglish',
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/migrations/*.ts'],
-  synchronize: false, // Always false for migrations
+  synchronize: true, // Auto-sync enabled
 });

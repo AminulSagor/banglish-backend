@@ -33,10 +33,10 @@ export class Profile {
   country: string | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  division: string | null;
+  district: string | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  district: string | null;
+  thana: string | null;
 
   @Column({ name: 'profile_picture', type: 'text', nullable: true })
   profilePicture: string | null;
